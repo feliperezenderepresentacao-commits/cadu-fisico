@@ -259,9 +259,9 @@ AGENDA = None    # Fase 2: agenda por voz
 PAREAR = {"codigo": None, "ate": 0, "erros": 0}   # pareamento sem cabo (código de 6 dígitos)
 
 
-def AGENDA_notificar(titulo, texto):
+def AGENDA_notificar(titulo, texto, segundos=15):
     from agenda import notificar
-    notificar(titulo, texto)
+    notificar(titulo, texto, segundos)
 OUVIDO = None
 
 
@@ -394,7 +394,7 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/parear/pedir":   # pareamento sem cabo, passo 1: o PC mostra um código
             PAREAR.update(codigo="%06d" % secrets.randbelow(1000000), ate=time.time() + 600, erros=0)
             log("[parear] código para o celular (%s): %s" % (self.client_address[0], PAREAR["codigo"]))
-            AGENDA_notificar("Código do Cadu: " + PAREAR["codigo"], "Digite este código no celular para parear (vale 10 minutos).")
+            AGENDA_notificar("Código do Cadu: " + PAREAR["codigo"], "Digite este código no celular para parear (vale 10 minutos).", 120)
             return self._json({"ok": True})
         if u.path == "/api/parear":         # passo 2: o celular manda o código e recebe o token
             try:

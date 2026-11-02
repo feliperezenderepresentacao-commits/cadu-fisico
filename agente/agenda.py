@@ -135,22 +135,15 @@ def quando_falado(q, agora=None):
 
 
 # ---------------------------------------------------------------- avisos no Windows
-def notificar(titulo, texto):
-    """Balão/toast do Windows (sem instalar nada)."""
+def notificar(titulo, texto, segundos=15):
+    """Aviso no canto da tela do PC (janelinha do Cadu com som). Não depende do PowerShell,
+    que neste PC é bloqueado ("Acesso negado") quando chamado pelo agente escondido."""
     if os.name != "nt":
         print("[notificação]", titulo, "-", texto)
         return
-    t = titulo.replace("'", "''")[:60]
-    x = texto.replace("'", "''")[:240]
-    ps = ("Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing;"
-          "$n = New-Object System.Windows.Forms.NotifyIcon; $n.Icon = [System.Drawing.SystemIcons]::Information;"
-          "$n.Visible = $true; $n.ShowBalloonTip(15000, '%s', '%s', [System.Windows.Forms.ToolTipIcon]::Info);"
-          "Start-Sleep -Seconds 16; $n.Dispose()" % (t, x))
+    exe = sys.executable.replace("python.exe", "pythonw.exe")
     try:
-        exe = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-        if not os.path.isfile(exe):
-            exe = "powershell"
-        subprocess.Popen([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps], creationflags=SEM_JANELA,
+        subprocess.Popen([exe, str(PASTA / "aviso.py"), titulo[:80], texto[:300], str(segundos)], creationflags=SEM_JANELA,
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         print("[agenda] notificação falhou:", e)
