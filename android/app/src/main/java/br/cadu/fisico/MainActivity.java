@@ -369,7 +369,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.5-eco"; }
+        public String versao() { return "0.9.6-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -512,6 +512,20 @@ public class MainActivity extends Activity {
                 lp.screenBrightness = v < 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : Math.max(0.01f, Math.min(1f, v));
                 getWindow().setAttributes(lp);
             } });
+        }
+
+        /** Bateria do celular: {"nivel": 0-100, "carregando": true/false}. */
+        @JavascriptInterface
+        public String bateria() {
+            try {
+                Intent b = registerReceiver(null, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+                int nivel = b.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1), escala = b.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100);
+                int st = b.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1);
+                boolean carregando = st == android.os.BatteryManager.BATTERY_STATUS_CHARGING || st == android.os.BatteryManager.BATTERY_STATUS_FULL;
+                return "{\"nivel\":" + (nivel < 0 ? -1 : nivel * 100 / Math.max(1, escala)) + ",\"carregando\":" + carregando + "}";
+            } catch (Exception e) {
+                return "{\"nivel\":-1}";
+            }
         }
 
         /** Fase 2: liga/desliga o ouvido (microfone repassado ao PC). */

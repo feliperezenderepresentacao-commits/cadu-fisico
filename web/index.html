@@ -101,6 +101,65 @@
   #rosto.surpreso .olho { -webkit-transform: scale(1.12); transform: scale(1.12); border-radius: 50%; background: #fff3b0; }
   body.com-alerta #olhos { top: 64%; }
 
+  /* --- relógio, data e bateria na tela dos olhos --- */
+  #rTopo { position: absolute; top: 5vmin; left: 0; right: 0; text-align: center; pointer-events: none; }
+  #rHora { font-family: "Orbitron", sans-serif; font-weight: 700; font-size: 12vmin; letter-spacing: .08em; color: #cfeffd; opacity: .85; }
+  #rData { font-family: "Oxanium", sans-serif; font-size: 3.6vmin; color: var(--suave); letter-spacing: .2em; text-transform: uppercase; margin-top: .5vmin; }
+  #rPilha { position: absolute; top: 4vmin; right: 4vmin; }
+  #rNome { position: absolute; bottom: 6vmin; left: 0; right: 0; text-align: center; font-family: "Orbitron", sans-serif; font-size: 3.4vmin;
+           color: var(--amarelo); letter-spacing: .2em; opacity: 0; -webkit-transition: opacity .4s; transition: opacity .4s; pointer-events: none; }
+  #rNome.ver { opacity: 1; }
+  body.eco #rTopo, body.eco #rPilha { opacity: .55; }
+  #olhos { top: 58%; }
+
+  /* --- pilha (bateria) --- */
+  .pilhaCx { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; font-family: "Oxanium", sans-serif; font-size: 3vmin; color: var(--texto); }
+  #hPilha { margin-top: .8vmin; }
+  .pilha { position: relative; width: 9vmin; height: 4.4vmin; border: .6vmin solid currentColor; margin-left: 1.2vmin; padding: .5vmin; }
+  .pilha:after { content: ""; position: absolute; right: -1.6vmin; top: 1vmin; width: .9vmin; height: 1.6vmin; background: currentColor; }
+  .pilha i { display: block; height: 100%; background: currentColor; }
+  .pilha b { position: absolute; left: 0; right: 0; top: -.4vmin; text-align: center; font-size: 3vmin; color: #0d1020; font-style: normal; }
+  .pilha.carga i { -webkit-animation: carga 1.4s steps(4) infinite; animation: carga 1.4s steps(4) infinite; }
+  @-webkit-keyframes carga { 50% { opacity: .45; } } @keyframes carga { 50% { opacity: .45; } }
+  .pilhaCx.ok { color: var(--verde); } .pilhaCx.medio { color: var(--amarelo); } .pilhaCx.baixo { color: var(--rosa); }
+
+  /* --- estilos de olhos (arraste para trocar) --- */
+  .olho .pu { display: none; position: absolute; }
+  /* 1 pixel/LED */
+  #olhos.e1 .olho { border-radius: 0; width: 30vmin; height: 30vmin; top: 10vmin; background: #5ce1e6;
+    background-image: linear-gradient(rgba(13,16,32,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(13,16,32,.55) 1px, transparent 1px);
+    background-size: 5vmin 5vmin; box-shadow: 0 0 6vmin rgba(92,225,230,.45); }
+  #olhos.e1 .olho.e { left: 16vmin; } #olhos.e1 .olho.d { right: 16vmin; }
+  /* 2 anime (íris com brilho) */
+  #olhos.e2 .olho { width: 34vmin; height: 42vmin; border-radius: 50%; background: radial-gradient(circle at 50% 60%, #1b2a6b 0, #2f6bff 38%, #7fd1ff 70%, #c9f1ff 100%);
+    box-shadow: 0 0 8vmin rgba(127,209,255,.4); }
+  #olhos.e2 .olho .pu { display: block; width: 9vmin; height: 9vmin; border-radius: 50%; background: #fff; left: 7vmin; top: 8vmin;
+    box-shadow: 13vmin 18vmin 0 -2.5vmin #fff; }
+  /* 3 visor (faixa com luz que passeia) */
+  #olhos.e3 .olho.d { display: none; }
+  #olhos.e3 .olho.e { left: 6vmin; width: 100vmin; height: 12vmin; top: 19vmin; border-radius: 6vmin; background: #1b0b14; box-shadow: inset 0 0 0 .6vmin #ff3b5c, 0 0 7vmin rgba(255,59,92,.35); }
+  #olhos.e3 .olho .pu { display: block; top: 2vmin; left: 4vmin; width: 22vmin; height: 8vmin; border-radius: 4vmin; background: #ff3b5c; box-shadow: 0 0 5vmin #ff3b5c;
+    -webkit-animation: varre 2.6s ease-in-out infinite alternate; animation: varre 2.6s ease-in-out infinite alternate; }
+  @-webkit-keyframes varre { to { -webkit-transform: translateX(70vmin); } } @keyframes varre { to { transform: translateX(70vmin); } }
+  /* 4 gato (pupila em fenda) */
+  #olhos.e4 .olho { width: 36vmin; height: 36vmin; top: 7vmin; border-radius: 50% 6vmin; background: radial-gradient(circle, #e9ff70 0, #9be15d 60%, #3f8f3a 100%);
+    -webkit-transform: rotate(-45deg); transform: rotate(-45deg); box-shadow: 0 0 8vmin rgba(155,225,93,.35); }
+  #olhos.e4 .olho .pu { display: block; width: 5vmin; height: 30vmin; left: 15.5vmin; top: 3vmin; border-radius: 50%; background: #0d1020; -webkit-transform: rotate(45deg); transform: rotate(45deg); }
+  #rosto.piscar #olhos.e4 .olho { -webkit-transform: rotate(-45deg) scale(1, .08); transform: rotate(-45deg) scale(1, .08); }
+  /* 5 coração */
+  #olhos.e5 .olho { overflow: visible; width: 30vmin; height: 30vmin; top: 12vmin; border-radius: 0; background: transparent; box-shadow: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 29'%3E%3Cpath fill='%23ff5d8f' d='M16 29 2.7 15.7A8 8 0 0 1 16 4.6 8 8 0 0 1 29.3 15.7Z'/%3E%3C/svg%3E");
+    background-size: contain; background-repeat: no-repeat; -webkit-animation: bate 1.1s ease-in-out infinite; animation: bate 1.1s ease-in-out infinite; }
+  #olhos.e5 .olho:before, #olhos.e5 .olho:after, #olhos.e6 .olho:before, #olhos.e6 .olho:after { display: none; }
+  #olhos.e5 .olho.e { left: 18vmin; } #olhos.e5 .olho.d { right: 18vmin; }
+  @-webkit-keyframes bate { 15% { -webkit-transform: scale(1.12); } 30% { -webkit-transform: scale(1); } 45% { -webkit-transform: scale(1.08); } }
+  @keyframes bate { 15% { transform: scale(1.12); } 30% { transform: scale(1); } 45% { transform: scale(1.08); } }
+  /* 6 feliz (^ ^) */
+  #olhos.e6 .olho { background: transparent; box-shadow: none; overflow: visible; width: 30vmin; height: 30vmin; top: 14vmin; border-radius: 50%;
+    border: 4.5vmin solid #ffd166; border-color: #ffd166 #ffd166 transparent transparent; -webkit-transform: rotate(-45deg); transform: rotate(-45deg); }
+  #olhos.e6 .olho.e { left: 16vmin; } #olhos.e6 .olho.d { right: 16vmin; }
+  #rosto.piscar #olhos.e6 .olho { -webkit-transform: rotate(-45deg); transform: rotate(-45deg); }
+
   /* ================= AVISOS ================= */
   #aviso { position: absolute; bottom: 17vmin; width: 100%; text-align: center; font-size: 4vmin; color: var(--suave); pointer-events: none; }
   #aviso.alerta { color: var(--rosa); }
@@ -228,7 +287,7 @@
     <div class="barra" id="bAlegria"></div>
     <div class="barra" id="bEnergia"></div>
   </div>
-  <div id="hudDir"><div id="relogio">--:--</div><div id="conexao"></div></div>
+  <div id="hudDir"><div id="relogio">--:--</div><div class="pilhaCx" id="hPilha"></div><div id="conexao"></div></div>
   <div id="balao"></div>
   <div id="ferramentas"></div>
 </div>
@@ -239,7 +298,12 @@
   <div id="codigoMsg"></div><input id="codigoIn" type="tel" maxlength="6" placeholder="000000">
   <div><span class="acao caixa" id="codigoOk">confirmar</span><span class="acao caixa" id="codigoOutro">outro código</span><span class="acao caixa" id="codigoSair">fechar</span></div></div>
 
-<div id="rosto"><div id="olhos"><div class="olho e"></div><div class="olho d"></div></div></div>
+<div id="rosto">
+  <div id="rTopo"><div id="rHora">--:--</div><div id="rData"></div></div>
+  <div class="pilhaCx" id="rPilha"></div>
+  <div id="olhos" class="e0"><div class="olho e"><i class="pu"></i></div><div class="olho d"><i class="pu"></i></div></div>
+  <div id="rNome"></div>
+</div>
 
 <div id="aviso"></div>
 <div id="rodape" class="caixa"></div>
@@ -486,6 +550,27 @@
     setTimeout(olhar, 1500 + Math.random() * 3000);
   }
   var timerRosto = null, semCliqueAte = 0;
+  // ---- estilos de olhos: arraste (para o lado ou para cima/baixo) para trocar
+  var ESTILOS_OLHO = ["clássico", "pixel", "anime", "visor", "gato", "coração", "feliz"], estiloOlho = 0, toqueRosto = null, timerNome = null;
+  function aplicarOlho(n, mostrar) {
+    estiloOlho = (n + ESTILOS_OLHO.length) % ESTILOS_OLHO.length;
+    $("olhos").className = "e" + estiloOlho;
+    if (mostrar) {
+      $("rNome").textContent = "◀ " + ESTILOS_OLHO[estiloOlho] + " ▶"; $("rNome").className = "ver";
+      clearTimeout(timerNome); timerNome = setTimeout(function () { $("rNome").className = ""; }, 1600);
+      pedir("POST", "/api/prefs", { olhos: estiloOlho }, function () {}); prefs.olhos = estiloOlho;
+    }
+  }
+  rosto.addEventListener("touchstart", function (e) { var t = e.touches[0]; toqueRosto = { x: t.clientX, y: t.clientY }; }, false);
+  rosto.addEventListener("touchend", function (e) {
+    if (!toqueRosto) return;
+    var t = e.changedTouches[0], dx = t.clientX - toqueRosto.x, dy = t.clientY - toqueRosto.y; toqueRosto = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 50) return;
+    semCliqueAte = Date.now() + 600; clearTimeout(timerRosto); vibrar(15);
+    var passo = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : -1) : (dy < 0 ? 1 : -1);
+    aplicarOlho(estiloOlho + passo, true);
+  }, false);
+
   rosto.addEventListener("click", function () {   // 1 toque abre o menu; 2 toques (duplo) saem do modo economia
     clearTimeout(timerRosto);
     if (Date.now() < semCliqueAte) return;
@@ -912,9 +997,12 @@
   }
 
   // ---------------------------------------------------------------- status
+  var DIAS_S = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"], MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   function relogio() {
-    var t = window.horaPC(), h = t.h, m = t.m;
+    var t = window.horaPC(), h = t.h, m = t.m, d = new Date();
     $("relogio").textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+    $("rHora").textContent = $("relogio").textContent;
+    $("rData").textContent = DIAS_S[d.getDay()] + " · " + d.getDate() + " " + MESES[d.getMonth()];
     setTimeout(relogio, 10000);
   }
   function status() {
@@ -940,9 +1028,23 @@
   }
 
   // ---------------------------------------------------------------- início
-  pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) { prefs = p; if (listaBotoes.length) montarBotoes(listaBotoes); } aplicarModo(!er && p ? p.tela : "mundo3d"); });
+  pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) { prefs = p; aplicarOlho(p.olhos || 0, false); if (listaBotoes.length) montarBotoes(listaBotoes); } aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
+  // ---- bateria do celular (pilha no canto)
+  function desenharPilha(nivel, carregando) {
+    var cls = nivel >= 50 ? "ok" : (nivel >= 20 ? "medio" : "baixo");
+    var html = nivel + "%<span class='pilha" + (carregando ? " carga" : "") + "'><i style='width:" + Math.max(4, nivel) + "%'></i></span>";
+    var ids = ["hPilha", "rPilha"];
+    for (var i = 0; i < ids.length; i++) { $(ids[i]).className = "pilhaCx " + cls; $(ids[i]).innerHTML = html; }
+  }
+  function lerBateria() {
+    var b = ponte(function () { return JSON.parse(Cadu.bateria()); });
+    if (b && b.nivel >= 0) desenharPilha(b.nivel, b.carregando);
+    else if (navigator.getBattery) navigator.getBattery().then(function (x) { desenharPilha(Math.round(x.level * 100), x.charging); });
+  }
+  lerBateria(); setInterval(lerBateria, 60000);
+
   buscarVoz(); brilho(-1);   // ao abrir a tela, o brilho volta ao normal
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();
 })();

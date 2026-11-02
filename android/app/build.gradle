@@ -10,8 +10,8 @@ android {
         applicationId "br.cadu.fisico.voz"  // id novo: instala ao lado do app antigo (assinatura diferente), sem desinstalar
         minSdk 21          // J3 2016 roda Android 5.1 (API 22)
         targetSdk 34
-        versionCode 16
-        versionName "0.9.5-eco"
+        versionCode 17
+        versionName "0.9.6-eco"
     }
 
     // Chave FIXA: toda versão sai com a mesma assinatura, então o J3 aceita
