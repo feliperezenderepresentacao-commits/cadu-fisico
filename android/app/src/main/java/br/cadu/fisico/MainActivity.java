@@ -171,7 +171,16 @@ public class MainActivity extends Activity {
         if (ping("http://127.0.0.1:" + PORTA + "/api/ping")) return URL_USB;
         String token = prefs.getString("token", null);
         if (token == null) return null;  // ainda não pareado pelo cabo
-        String[] candidatos = {ipBeacon, prefs.getString("ip", null)};
+        String[] candidatos = {ipBeacon, prefs.getString("ip", null), null};
+        // nem o "grito" nem o último IP responderam: varre a rede atual (qualquer Wi-Fi), no máx. 1x a cada 20 s
+        if (ipBeacon == null || !ping("http://" + ipBeacon + ":" + PORTA + "/api/ping")) {
+            String salvo = prefs.getString("ip", null);
+            if ((salvo == null || !ping("http://" + salvo + ":" + PORTA + "/api/ping"))
+                    && System.currentTimeMillis() - ultimaVarredura > 20000) {
+                ultimaVarredura = System.currentTimeMillis();
+                candidatos[2] = varrerRede();
+            }
+        }
         for (String ip : candidatos) {
             if (ip != null && ping("http://" + ip + ":" + PORTA + "/api/ping")) {
                 prefs.edit().putString("ip", ip).apply();
@@ -188,6 +197,82 @@ public class MainActivity extends Activity {
     }
 
     static volatile String diag = "";
+    private volatile long ultimaVarredura = 0;
+
+    /** Procura o PC em todos os 254 endereços da rede do celular (porta 8765 + resposta "cadu"). */
+    private String varrerRede() {
+        int meu;
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            meu = wm == null ? 0 : wm.getConnectionInfo().getIpAddress();
+        } catch (Exception e) { meu = 0; }
+        if (meu == 0) { meu = ipDoHotspot(); }   // celular roteando (PC no hotspot do celular)
+        if (meu == 0) return null;
+        final String base = (meu & 0xff) + "." + ((meu >> 8) & 0xff) + "." + ((meu >> 16) & 0xff) + ".";
+        final int eu = (meu >> 24) & 0xff;
+        diag = "procurando o PC na rede " + base + "x";
+        android.util.Log.i("cadu", diag);
+        final String[] achou = {null};
+        final java.util.concurrent.atomic.AtomicInteger prox = new java.util.concurrent.atomic.AtomicInteger(1);
+        Thread[] ts = new Thread[24];
+        for (int k = 0; k < ts.length; k++) {
+            ts[k] = new Thread(new Runnable() { public void run() {
+                int n;
+                while (achou[0] == null && (n = prox.getAndIncrement()) < 255) {
+                    if (n == eu) continue;
+                    java.net.Socket so = new java.net.Socket();
+                    try {
+                        so.connect(new java.net.InetSocketAddress(base + n, PORTA), 350);
+                        so.close();
+                        if (eCadu(base + n)) { synchronized (achou) { if (achou[0] == null) achou[0] = base + n; } }
+                    } catch (Exception ignored) {
+                        try { so.close(); } catch (Exception ignored2) { }
+                    }
+                }
+            } });
+            ts[k].setDaemon(true);
+            ts[k].start();
+        }
+        for (Thread t : ts) { try { t.join(8000); } catch (InterruptedException ignored) { } }
+        diag = achou[0] != null ? "PC achado na rede: " + achou[0] : "PC não encontrado na rede " + base + "x";
+        android.util.Log.i("cadu", diag);
+        return achou[0];
+    }
+
+    /** IP do próprio celular quando ele é o roteador (hotspot), ex.: 192.168.43.1. */
+    private static int ipDoHotspot() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> it = java.net.NetworkInterface.getNetworkInterfaces();
+            while (it != null && it.hasMoreElements()) {
+                java.net.NetworkInterface ni = it.nextElement();
+                String nome = ni.getName() == null ? "" : ni.getName();
+                if (!ni.isUp() || ni.isLoopback() || nome.startsWith("rmnet") || nome.startsWith("ccmni") || nome.startsWith("pdp") || nome.startsWith("dummy")) continue;
+                java.util.Enumeration<java.net.InetAddress> ad = ni.getInetAddresses();
+                while (ad.hasMoreElements()) {
+                    java.net.InetAddress a = ad.nextElement();
+                    byte[] b = a.getAddress();
+                    if (b.length == 4 && a.isSiteLocalAddress())
+                        return (b[0] & 0xff) | ((b[1] & 0xff) << 8) | ((b[2] & 0xff) << 16) | ((b[3] & 0xff) << 24);
+                }
+            }
+        } catch (Exception ignored) { }
+        return 0;
+    }
+
+    private static boolean eCadu(String ip) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL("http://" + ip + ":" + PORTA + "/api/ping").openConnection(java.net.Proxy.NO_PROXY);
+            c.setConnectTimeout(1500); c.setReadTimeout(2000);
+            if (c.getResponseCode() != 200) return false;
+            byte[] b = new byte[64]; int n = c.getInputStream().read(b);
+            return n > 0 && new String(b, 0, n, "UTF-8").contains("\"cadu\"");
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
 
     private static int codigoHttp(String endereco) {
         HttpURLConnection c = null;
@@ -369,7 +454,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.6-eco"; }
+        public String versao() { return "0.9.7-rede"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
