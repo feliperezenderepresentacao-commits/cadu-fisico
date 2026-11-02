@@ -156,6 +156,10 @@ public class MainActivity extends Activity {
                             });
                         }
                     }
+                    else if (URL_USB.equals(urlAtual) && System.currentTimeMillis() - ultimoTesteWifi > 60000) {
+                        ultimoTesteWifi = System.currentTimeMillis();
+                        testarWifi();   // no cabo: confere se o Wi-Fi até o PC funcionaria e conta no log do PC
+                    }
                     else if (!carregou && System.currentTimeMillis() - desde > 20000) {
                         android.util.Log.w("cadu", "a tela do PC não abriu em 20 s — tentando de novo");
                         diag = "a tela do PC não abriu (tentando de novo)";
@@ -199,6 +203,32 @@ public class MainActivity extends Activity {
     }
 
     static volatile String diag = "";
+    private volatile long ultimoTesteWifi = 0;
+
+    /** Teste do caminho Wi-Fi feito enquanto está no cabo; o resultado vai para o log do PC (/api/diag). */
+    private void testarWifi() {
+        String meuIp = "?";
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            int ip = wm == null ? 0 : wm.getConnectionInfo().getIpAddress();
+            String rede = wm == null ? "?" : String.valueOf(wm.getConnectionInfo().getSSID());
+            meuIp = ip == 0 ? "sem Wi-Fi" : ((ip & 0xff) + "." + ((ip >> 8) & 0xff) + "." + ((ip >> 16) & 0xff) + "." + ((ip >> 24) & 0xff)) + " rede " + rede;
+        } catch (Exception ignored) { }
+        String salvo = prefs.getString("ip", null);
+        String r = "teste wifi: celular " + meuIp + " | aviso do PC " + (ipBeacon != null ? "chega (" + ipBeacon + ")" : "NÃO chega")
+                + " | token " + (prefs.getString("token", null) != null ? "ok" : "FALTA");
+        String alvo = ipBeacon != null ? ipBeacon : salvo;
+        if (alvo != null) {
+            String antes = diag;
+            boolean ok = ping("http://" + alvo + ":" + PORTA + "/api/ping");
+            r += " | " + alvo + ":" + PORTA + " " + (ok ? "OK" : "FALHOU (" + diag + ")");
+            diag = antes;
+        } else {
+            r += " | sem IP do PC salvo";
+        }
+        android.util.Log.i("cadu", r);
+        try { codigoHttp("http://127.0.0.1:" + PORTA + "/api/diag?m=" + java.net.URLEncoder.encode(r, "UTF-8")); } catch (Exception ignored) { }
+    }
     private volatile long ultimaVarredura = 0;
 
     /** Procura o PC em todos os 254 endereços da rede do celular (porta 8765 + resposta "cadu"). */
@@ -456,7 +486,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.7-rede"; }
+        public String versao() { return "0.9.8-rede"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
