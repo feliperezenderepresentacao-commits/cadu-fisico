@@ -36,7 +36,7 @@
     if (Math.abs(erro) < tol) soltar();
   }
   Jogo.iniciar({ recarregarAoGirar: true, id: "torre", nome: "Torre", botMs: 30, bot: bot,
-    controles: [{ rotulo: "soltar", larga: true, fn: soltar }],
+    controles: [{ letra: "A", rotulo: "soltar", fn: soltar }],
     aoAuto: function () { Jogo.falar(Jogo.sortear(["Vou até o céu!", "Mira… agora!", "Construindo!"])); } });
   Jogo.falar("Toque para soltar o bloco!");
 })();

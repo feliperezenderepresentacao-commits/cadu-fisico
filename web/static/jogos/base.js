@@ -33,15 +33,24 @@ var Jogo = (function () {
     var v = document.createElement("div"); v.id = "aviso"; document.body.appendChild(v);
     $("jTitulo").textContent = opc.nome; $("avatar").innerHTML = avatarSVG(q.estilo);
     $("casa").addEventListener("click", function (e) { e.stopPropagation(); avisarPai({ cadu: "sair" }); });
-    var ctl = $("controles");
+    // controle de videogame: direcional (cruz) à esquerda, botões redondos à direita
+    var ctl = $("controles"), dpad = document.createElement("div"), temDpad = false, nAcao = 0;
+    dpad.id = "dpad"; dpad.innerHTML = '<div class="miolo"></div>'; document.body.appendChild(dpad);
     (opc.controles || []).forEach(function (c) {
-      var b = document.createElement("div"); b.className = "ctl caixa" + (c.larga ? " larga" : ""); b.textContent = c.rotulo;
+      var b = document.createElement("div");
+      if (c.d) { temDpad = true; b.className = "seta " + c.d; b.innerHTML = '<i></i>'; dpad.appendChild(b); }
+      else {
+        nAcao++;
+        b.className = "acao " + (c.pequeno ? "pequeno" : (nAcao === 1 ? "a" : "b"));
+        b.innerHTML = '<span>' + (c.letra || "") + '</span><em>' + c.rotulo + '</em>';
+        ctl.appendChild(b);
+      }
       function ap(e) { e.preventDefault(); toque(); b.className += " ap"; c.fn(); if (c.repetir) { b._r = setInterval(c.fn, c.repetir); } }
       function solta() { b.className = b.className.replace(/ ap/g, ""); clearInterval(b._r); }
       b.addEventListener("touchstart", ap, false); b.addEventListener("touchend", solta, false); b.addEventListener("touchcancel", solta, false);
       b.addEventListener("mousedown", ap, false); b.addEventListener("mouseup", solta, false); b.addEventListener("mouseleave", solta, false);
-      ctl.appendChild(b);
     });
+    if (!temDpad) document.body.className += " semdpad";
     recorde = parseInt(ler("rec_" + opc.id) || "0", 10) || 0; mostrar();
   }
   function mostrar() { $("pts").textContent = pts; $("rec").textContent = "recorde " + recorde; }

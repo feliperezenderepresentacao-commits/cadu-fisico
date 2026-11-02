@@ -49,9 +49,9 @@
       if ((M.over || M.won) && !reinicio) { Jogo.fim(M.won ? "2048!!!" : "FIM · " + M.score); reinicio = setTimeout(novo, 3500); }
     };
     Jogo.iniciar({ id: "2048", nome: "2048", botMs: 260,
-      controles: [{ rotulo: "▲", fn: function () { M.move(0); } }, { rotulo: "▼", fn: function () { M.move(2); } },
-                  { rotulo: "◀", fn: function () { M.move(3); } }, { rotulo: "▶", fn: function () { M.move(1); } },
-                  { rotulo: "novo jogo", larga: true, fn: novo }],
+      controles: [{ d: "cima", fn: function () { M.move(0); } }, { d: "baixo", fn: function () { M.move(2); } },
+                  { d: "esq", fn: function () { M.move(3); } }, { d: "dir", fn: function () { M.move(1); } },
+                  { rotulo: "novo jogo", pequeno: true, fn: novo }],
       bot: function () { if (M.over || M.won) return; var b = M.ai.getBest(); if (b && b.move !== -1 && b.move !== undefined) M.move(+b.move); },
       aoAuto: function () { Jogo.falar(Jogo.sortear(["Deixa comigo!", "Vou juntar tudo!", "Olha a estratégia…"])); }
     });

@@ -96,8 +96,9 @@
   window.addEventListener("resize", medir);
   document.addEventListener("keydown", function (e) { var k = e.keyCode; if (k === 37) mover(-1, 0); else if (k === 39) mover(1, 0); else if (k === 38) girar(); else if (k === 40) descer(); else if (k === 32) queda(); });
   Jogo.iniciar({ id: "tetris", nome: "Tetris", botMs: 110, bot: bot,
-    controles: [{ rotulo: "◀", repetir: 140, fn: function () { mover(-1, 0); } }, { rotulo: "▶", repetir: 140, fn: function () { mover(1, 0); } },
-                { rotulo: "girar", fn: girar }, { rotulo: "▼", repetir: 70, fn: descer }, { rotulo: "cair", larga: true, fn: queda }],
+    controles: [{ d: "esq", repetir: 140, fn: function () { mover(-1, 0); } }, { d: "dir", repetir: 140, fn: function () { mover(1, 0); } },
+                { d: "cima", fn: girar }, { d: "baixo", repetir: 70, fn: descer },
+                { letra: "A", rotulo: "girar", fn: girar }, { letra: "B", rotulo: "cair", fn: queda }],
     aoAuto: function () { planoBot = []; Jogo.falar(Jogo.sortear(["Minha vez!", "Vou fazer um Tetris!", "Encaixa aqui…"])); } });
   medir(); novo(); quadro(); Jogo.falar("Use os botões para jogar!");
 })();

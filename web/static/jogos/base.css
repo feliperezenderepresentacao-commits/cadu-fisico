@@ -27,24 +27,47 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fundo)
   -webkit-animation: piscaA 1.6s steps(2) infinite; animation: piscaA 1.6s steps(2) infinite; }
 body.auto #auto { display: block; }
 @-webkit-keyframes piscaA { 50% { opacity: .55; } } @keyframes piscaA { 50% { opacity: .55; } }
-#controles { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-align-content: flex-end; align-content: flex-end; margin: 0 -1.2vmin; }
-.ctl { width: calc(50% - 2.4vmin); height: 15vmin; margin: 1.2vmin; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
-  font-family: "Orbitron", sans-serif; font-size: 3.4vmin; text-transform: uppercase; }
-.ctl.larga { width: calc(100% - 2.4vmin); }
-.ctl.ap { -webkit-transform: translateY(var(--p)); transform: translateY(var(--p)); background: #2a3560; }
+/* ---------- controle de videogame ---------- */
+#area { left: 25vw; right: 28vw; }
+#lado { width: 28vw; }
+body.semdpad #area { left: 0; }
+#dpad { position: absolute; left: 3vw; top: 50%; width: 19vw; height: 19vw; max-width: 46vmin; max-height: 46vmin; -webkit-transform: translateY(-50%); transform: translateY(-50%); }
+body.semdpad #dpad { display: none; }
+#dpad .miolo { position: absolute; left: 33.3%; top: 33.3%; width: 33.4%; height: 33.4%; background: #1d2540; }
+#dpad .seta { position: absolute; width: 33.4%; height: 33.4%; background: #1d2540; box-shadow: inset 0 0 0 var(--p) var(--borda); }
+#dpad .cima { left: 33.3%; top: 0; } #dpad .baixo { left: 33.3%; bottom: 0; } #dpad .esq { left: 0; top: 33.3%; } #dpad .dir { right: 0; top: 33.3%; }
+#dpad .seta i { position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -1.6vmin 0 0 -1.6vmin; border: 1.6vmin solid transparent; }
+#dpad .cima i { border-bottom-color: var(--ciano); margin-top: -2.6vmin; } #dpad .baixo i { border-top-color: var(--ciano); margin-top: -.6vmin; }
+#dpad .esq i { border-right-color: var(--ciano); margin-left: -2.6vmin; } #dpad .dir i { border-left-color: var(--ciano); margin-left: -.6vmin; }
+#dpad .seta.ap { background: #2a3560; }
+#controles { -webkit-flex: 1; flex: 1; position: relative; min-height: 30vmin; }
+.acao { position: absolute; border-radius: 50%; width: 17vmin; height: 17vmin; background: #ef476f; box-shadow: 0 1vmin 0 #9b2443, inset 0 -1vmin 0 rgba(0,0,0,.2);
+        display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.acao span { font-family: "Orbitron", sans-serif; font-weight: 700; font-size: 5vmin; color: #fff; line-height: 1; }
+.acao em { font-style: normal; font-size: 2.6vmin; color: #fff; opacity: .9; margin-top: .3vmin; text-transform: uppercase; letter-spacing: .05em; }
+.acao.a { right: 2vmin; bottom: 10vmin; }
+.acao.b { right: 21vmin; bottom: 2vmin; background: #ffd166; box-shadow: 0 1vmin 0 #b38a2e, inset 0 -1vmin 0 rgba(0,0,0,.2); }
+.acao.b span, .acao.b em { color: #2b2142; }
+.acao.pequeno { left: 0; bottom: 1vmin; width: 15vmin; height: 6vmin; border-radius: 3vmin; background: #39446b; box-shadow: 0 .6vmin 0 #1d2540; }
+.acao.pequeno span { display: none; } .acao.pequeno em { font-size: 2.3vmin; }
+.acao.ap { -webkit-transform: translateY(.8vmin); transform: translateY(.8vmin); box-shadow: none; }
 #aviso { position: absolute; left: 0; right: 34vw; top: 50%; text-align: center; font-family: "Orbitron", sans-serif; font-size: 5vmin; color: var(--amarelo); text-shadow: var(--p) var(--p) 0 #000; pointer-events: none; display: none; }
 #aviso.ver { display: block; }
 
-/* ---------- celular em pé (giroscópio): jogo em cima, controles embaixo ---------- */
+/* ---------- celular em pé (giroscópio): estilo Game Boy — tela em cima, cruz à esquerda e botões à direita embaixo ---------- */
 @media (orientation: portrait) {
-  #area { right: 0; bottom: 38vh; }
-  #lado { top: auto; height: 38vh; width: 100%; display: block; padding: 2vmin 3vmin; }
-  #lTopo, #lMeio, #fala { width: 44%; }
-  #lMeio { margin: 2vmin 0 1vmin; }
-  #avatar { width: 12vmin; height: 12vmin; }
-  #controles { position: absolute; right: 2vmin; top: 2vmin; bottom: 2vmin; width: 54%; margin: 0; }
-  .ctl { height: 8.5vh; margin: .8vmin; width: calc(50% - 1.6vmin); }
-  .ctl.larga { width: calc(100% - 1.6vmin); }
-  #aviso { right: 0; top: 28vh; }
-  #auto { top: auto; bottom: 39vh; }
+  #area { left: 0; right: 0; top: 0; bottom: 42vh; }
+  #lado { top: 58vh; bottom: 0; height: auto; width: 100%; display: block; padding: 1.5vmin 3vmin; }
+  #lTopo { position: absolute; left: 3vmin; top: 1.5vmin; }
+  #lMeio { position: absolute; right: 3vmin; top: 0; margin: 0; }
+  #avatar { width: 11vmin; height: 11vmin; }
+  #pts { font-size: 5.5vmin; }
+  #fala { position: absolute; left: 3vmin; right: 3vmin; top: 14vmin; width: auto; }
+  #dpad { left: 5vw; top: auto; bottom: 7vh; width: 40vw; height: 40vw; max-width: none; max-height: none; -webkit-transform: none; transform: none; }
+  #controles { position: absolute; right: 3vw; bottom: 4vh; width: 46vw; height: 46vw; min-height: 0; }
+  .acao { width: 20vmin; height: 20vmin; }
+  .acao.a { right: 0; bottom: 18vmin; } .acao.b { right: 22vmin; bottom: 6vmin; }
+  .acao.pequeno { left: 0; bottom: -2vmin; width: 18vmin; height: 7vmin; }
+  #aviso { right: 0; top: 24vh; }
+  #auto { top: auto; bottom: 43vh; }
 }
