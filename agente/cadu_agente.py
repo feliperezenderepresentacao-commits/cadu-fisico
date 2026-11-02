@@ -191,6 +191,28 @@ def hora_de_dormir(cfg):
 
 
 # ---------------------------------------------------------------- ações dos botões
+_apps = {}
+
+
+def abrir_app(nome, url_reserva, rotulo):
+    """Abre um aplicativo instalado pelo nome que aparece no Menu Iniciar (ex.: "Claude").
+    Funciona para apps comuns e da Microsoft Store. Se não achar, abre o site reserva."""
+    if nome not in _apps:
+        try:
+            cmd = "(Get-StartApps | Where-Object { $_.Name -eq '%s' } | Select-Object -First 1).AppID" % nome.replace("'", "")
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=20,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            _apps[nome] = (r.stdout or "").strip() or None
+        except Exception:
+            _apps[nome] = None
+    app_id = _apps[nome]
+    if app_id:
+        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + app_id])
+        return True, rotulo + ": aberto."
+    if url_reserva:
+        webbrowser.open(url_reserva)
+        return True, rotulo + ": app não encontrado, abri o site."
+    return False, "App %s não encontrado no PC." % nome
 def executar(botao, cfg):
     tipo = botao.get("tipo")
     if tipo == "comando":
@@ -209,6 +231,8 @@ def executar(botao, cfg):
             os.startfile(botao["protocolo"])  # ex.: claude:// abre o app instalado
             return True, botao["rotulo"] + ": aberto."
         return False, botao["rotulo"] + ": app não encontrado neste PC."
+    if tipo == "app":
+        return abrir_app(botao["app"], botao.get("url_reserva"), botao["rotulo"])
     if tipo == "chrome":
         return chrome.abrir(botao["id"].split(":", 1)[1], cfg)
     if tipo == "status_vps":

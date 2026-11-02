@@ -11,26 +11,27 @@
   },
   "chrome": {
     "ativo": true,
-    "_como_usar": "Em 'perfis', a chave é a pasta do perfil (ex.: Default, Profile 1). Para ver as pastas: python agente\\chrome.py",
-    "perfis": {
-      "PERFIL_PESSOAL": {
-        "nome": "Felipe pessoal",
-        "icone": "whatsapp",
-        "cor": "#25d366",
-        "links": [
-          "https://web.whatsapp.com"
-        ]
-      },
-      "PERFIL_PROFISSIONAL": {
-        "nome": "Felipe profissional",
-        "icone": "briefcase",
-        "cor": "#ffd166",
-        "links": [
-          "https://www.uol.com.br",
-          "https://www.globo.com",
-          "https://belavistadegoias.megaadmweb.com.br"
-        ]
-      }
+    "somente": [
+      "Felipe",
+      "Trabalho"
+    ],
+    "rotulos": {
+      "Felipe": "Trabalho",
+      "Trabalho": "Pessoal"
+    },
+    "icones": {
+      "Felipe": "briefcase",
+      "Trabalho": "whatsapp"
+    },
+    "links": {
+      "Felipe": [
+        "https://www.uol.com.br",
+        "https://www.globo.com",
+        "https://belavistadegoias.megaadmweb.com.br"
+      ],
+      "Trabalho": [
+        "https://web.whatsapp.com"
+      ]
     }
   },
   "botoes": [
@@ -46,12 +47,8 @@
       "icone": "robot-face",
       "rotulo": "Claude",
       "tipo": "app",
-      "caminhos": [
-        "%LOCALAPPDATA%\\AnthropicClaude\\claude.exe",
-        "%LOCALAPPDATA%\\Programs\\Claude\\Claude.exe",
-        "%LOCALAPPDATA%\\Programs\\claude-desktop\\Claude.exe"
-      ],
-      "protocolo": "claude://"
+      "app": "Claude",
+      "url_reserva": "https://claude.ai"
     },
     {
       "id": "vps",

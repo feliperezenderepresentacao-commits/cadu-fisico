@@ -71,22 +71,40 @@ def _ajuste(p, conf):
     return {}
 
 
+def _conf_por_nome(mapa, nome):
+    """Busca no dicionário do config pelo nome do perfil, sem diferenciar acento/maiúscula."""
+    alvo = _sem_acento(nome)
+    for k, v in (mapa or {}).items():
+        if _sem_acento(k) == alvo:
+            return v
+    return None
+
+
 def botoes(cfg):
-    """Botões dinâmicos, um por perfil do Chrome."""
+    """Botões dinâmicos, um por perfil do Chrome.
+    config.json → "chrome":
+      "somente": ["Felipe", ...]   mostra só esses perfis, nessa ordem (vazio = todos)
+      "rotulos": {"Felipe": "Trabalho"}   nome que aparece no botão
+      "icones":  {"Felipe": "briefcase"}  ícone (pixelarticons)
+      "links":   {"Felipe": ["https://..."]}  sites que abrem junto
+    """
     conf = cfg.get("chrome") or {}
     if conf.get("ativo") is False or not achar_chrome():
         return []
+    perfis = listar_perfis()
+    somente = conf.get("somente") or []
+    if somente:
+        ordem = [_sem_acento(x) for x in somente]
+        perfis = sorted([p for p in perfis if _sem_acento(p["nome"]) in ordem], key=lambda p: ordem.index(_sem_acento(p["nome"])))
     ocultar = {_sem_acento(x) for x in conf.get("ocultar", [])}
     saida = []
-    for p in listar_perfis():
+    for p in perfis:
         if _sem_acento(p["nome"]) in ocultar:
             continue
-        aj = _ajuste(p, conf)
-        if aj.get("ocultar"):
-            continue
-        nome = aj.get("nome") or p["nome"]
-        saida.append({"id": "chrome:" + p["dir"], "rotulo": nome, "icone": aj.get("icone") or icone_para(nome),
-                      "cor": aj.get("cor") or "#4285f4", "tipo": "chrome"})
+        rotulo = _conf_por_nome(conf.get("rotulos"), p["nome"]) or p["nome"]
+        saida.append({"id": "chrome:" + p["dir"], "rotulo": rotulo,
+                      "icone": _conf_por_nome(conf.get("icones"), p["nome"]) or icone_para(rotulo),
+                      "cor": "#4285f4", "tipo": "chrome"})
     return saida
 
 
@@ -104,7 +122,8 @@ def abrir(dir_perfil, cfg):
     urls = aj.get("links") or links.get(perfis[dir_perfil]["nome"]) or links.get(dir_perfil) or []
     urls = [u for u in urls if isinstance(u, str) and u.startswith(("http://", "https://"))]
     subprocess.Popen([exe, "--profile-directory=" + dir_perfil] + urls)
-    return True, "Chrome · %s aberto." % nome
+    rotulo = _conf_por_nome(conf.get("rotulos"), nome) or nome
+    return True, "Chrome · %s aberto." % rotulo
 
 
 if __name__ == "__main__":

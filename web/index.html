@@ -357,9 +357,12 @@
   // --- página 1: botões
   function montarBotoes(lista) {
     var g = $("grade"); g.innerHTML = "";
+    // todos os botões cabem na tela: altura de cada linha = 100% / número de linhas
+    var colunas = window.innerWidth > window.innerHeight ? 4 : 3, linhas = Math.max(3, Math.ceil(lista.length / colunas));
     for (var i = 0; i < lista.length; i++) (function (b, i) {
       var cor = b.cor || CORES[i % CORES.length];
       var bt = el("div", "btn"), cx = el("div", "caixa");
+      bt.style.height = (100 / linhas) + "%";
       var s = icone(b.icone); if (s) { s.style.color = cor; cx.appendChild(s); } else cx.appendChild(el("div", "rot", b.icone || "?"));
       cx.appendChild(el("div", "rot", b.rotulo || b.id));
       bt.appendChild(cx);
