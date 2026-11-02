@@ -77,7 +77,8 @@ public class MainActivity extends Activity {
             @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int code, String desc, String url) {
                 // PC desligado / cabo solto / Wi-Fi caiu -> rosto offline e volta a procurar
-                if (url != null && !url.startsWith("file:")) irOffline();
+                android.util.Log.w("cadu", "pagina falhou " + code + " " + desc + " " + url);
+                if (url != null && !url.startsWith("file:")) { diag = "página: " + desc; irOffline(); }
             }
         });
 
@@ -108,6 +109,7 @@ public class MainActivity extends Activity {
                     if (!conectado) {
                         final String url = acharAgente();
                         if (url != null) {
+                            android.util.Log.i("cadu", "conectando " + url.replaceAll("t=.*", "t=***"));
                             conectado = true;
                             urlAtual = url;
                             web.post(new Runnable() {
@@ -137,14 +139,24 @@ public class MainActivity extends Activity {
         return null;
     }
 
+    static volatile String diag = "";
+
     private static boolean ping(String endereco) {
         HttpURLConnection c = null;
+        long t0 = System.currentTimeMillis();
         try {
-            c = (HttpURLConnection) new URL(endereco).openConnection();
-            c.setConnectTimeout(1500);
-            c.setReadTimeout(1500);
-            return c.getResponseCode() == 200;
+            c = (HttpURLConnection) new URL(endereco).openConnection(java.net.Proxy.NO_PROXY);  // nunca passa por proxy
+            c.setConnectTimeout(3000);
+            c.setReadTimeout(5000);
+            c.setUseCaches(false);
+            c.setRequestProperty("Connection", "close");
+            int r = c.getResponseCode();
+            diag = endereco.replace("/api/ping", "") + " → " + r + " em " + (System.currentTimeMillis() - t0) + " ms";
+            android.util.Log.i("cadu", "ping " + diag);
+            return r == 200;
         } catch (Exception e) {
+            diag = endereco.replace("/api/ping", "") + " → " + e.getClass().getSimpleName() + ": " + e.getMessage();
+            android.util.Log.w("cadu", "ping falhou " + diag);
             return false;
         } finally {
             if (c != null) c.disconnect();
@@ -293,7 +305,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.1-eco"; }
+        public String versao() { return "0.9.2-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -335,7 +347,8 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) { }
             return "{\"wifiLigado\":" + ligado + ",\"rede\":\"" + ssid.replace("\\", "") + "\",\"ip\":\"" + ip
                     + "\",\"pareado\":" + (prefs.getString("token", null) != null)
-                    + ",\"ipPC\":\"" + (prefs.getString("ip", "") == null ? "" : prefs.getString("ip", "")) + "\"}";
+                    + ",\"ipPC\":\"" + (prefs.getString("ip", "") == null ? "" : prefs.getString("ip", "")) + "\""
+                    + ",\"diag\":\"" + diag.replace("\\", "/").replace("\"", "'") + "\"}";
         }
 
         /**
@@ -449,6 +462,6 @@ public class MainActivity extends Activity {
 
         /** A interface perdeu o agente: volta a procurar (cabo ou Wi-Fi). */
         @JavascriptInterface
-        public void recarregar() { irOffline(); }
+        public void recarregar() { android.util.Log.w("cadu", "a tela pediu recarregar"); diag = "a tela desistiu (falhas seguidas)"; irOffline(); }
     }
 }

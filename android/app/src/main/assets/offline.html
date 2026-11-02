@@ -47,7 +47,7 @@
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
   <div id="mic">🎤 Gravar post-it</div>
   <div id="micInfo"></div>
-  <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica"></span></div>
+  <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica" style="white-space:pre-line"></span></div>
 <script>
   // A busca (cabo e Wi-Fi) é feita pelo app; aqui só a mensagem e os atalhos.
   function info() {
@@ -58,6 +58,7 @@
       else if (!r.wifiLigado) d = "Wi-Fi do celular desligado — toque em 📶 Wi-Fi";
       else if (!r.rede) d = "Wi-Fi sem rede — toque em 📶 Wi-Fi e escolha a de casa";
       else d = "na rede " + r.rede + " · aguardando o PC (agente ligado?)";
+      if (r.diag) d += "\núltima tentativa: " + r.diag;
       document.getElementById("dica").textContent = d;
     } catch (e) {}
     setTimeout(info, 3000);
