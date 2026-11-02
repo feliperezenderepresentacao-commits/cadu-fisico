@@ -40,7 +40,7 @@ def parece_chamado(texto_vosk):
     if re.search(r"\b(lembr|lembrete|anota)", " ".join(p)):
         return True
     for w in p[:2]:
-        if re.match(r"^(c|k|g)a[a-z]{0,5}$", w) or w in ("dor", "du", "tu", "cadu"):
+        if re.match(r"^(c|k)a[dtjsu][a-z]{0,3}$", w) or w in ("dor", "du", "cadu", "kadu"):
             return True
     return False
 
