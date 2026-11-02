@@ -10,8 +10,8 @@ android {
         applicationId "br.cadu.fisico"
         minSdk 21          // J3 2016 roda Android 5.1 (API 22)
         targetSdk 34
-        versionCode 5
-        versionName "0.5-mundo"
+        versionCode 7
+        versionName "0.7-voz"
     }
 
     // Chave FIXA: toda versão sai com a mesma assinatura, então o J3 aceita

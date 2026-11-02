@@ -34,6 +34,9 @@ from pathlib import Path
 import chrome
 from noticias import Noticias
 from pet import Pet
+import cerebro
+from agenda import Agenda
+from voz import Ouvido
 
 PASTA = Path(__file__).resolve().parent
 WEB = PASTA.parent / "web"
@@ -151,6 +154,9 @@ def manter_tunel_usb(porta):
             r = subprocess.run([adb, "reverse", "tcp:%d" % porta, "tcp:%d" % porta],
                                capture_output=True, text=True, timeout=10,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if r.returncode == 0:  # Fase 2: o ouvido (microfone) usa a porta 8767
+                subprocess.run([adb, "reverse", "tcp:8767", "tcp:8767"], capture_output=True, timeout=10,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             estado = "conectado no cabo" if r.returncode == 0 else "fora do cabo"
         except Exception:
             estado = "fora do cabo"
@@ -249,6 +255,8 @@ def executar(botao, cfg):
 
 NOTICIAS = None  # definido no main()
 PET = None
+AGENDA = None    # Fase 2: agenda por voz
+OUVIDO = None
 
 
 # ---------------------------------------------------------------- servidor
@@ -320,6 +328,11 @@ class Handler(BaseHTTPRequestHandler):
                         "fuso_min": int(datetime.now().astimezone().utcoffset().total_seconds() // 60)})
         elif u.path == "/api/pet":
             self._json(PET.estado())
+        elif u.path == "/api/voz":
+            ev = [e for e in AGENDA.eventos if e["seq"] > int((q.get("desde") or ["0"])[0] or 0)]
+            self._json(dict(OUVIDO.estado, cerebro=cerebro.disponivel(carregar_config()), eventos=ev, seq=AGENDA.seq_ev))
+        elif u.path == "/api/notas":
+            self._json(AGENDA.lista())
         elif u.path == "/api/prefs":
             self._json(ler_prefs())
         elif u.path == "/api/jogo":
@@ -366,6 +379,14 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/pet":
                 msg, estado = PET.agir(pedido.get("acao"))
                 return self._json({"ok": True, "msg": msg, "pet": estado})
+            if u.path == "/api/notas/feito":
+                AGENDA.feito(int(pedido.get("id") or 0))
+                return self._json({"ok": True})
+            if u.path == "/api/voz/frase":   # mesmo caminho da voz, mas digitado (teste / sem microfone)
+                frase = str(pedido.get("frase") or "")[:500]
+                fala, nota = AGENDA.processar(frase)
+                OUVIDO.falar(fala)
+                return self._json({"ok": True, "fala": fala, "nota": nota})
             if u.path == "/api/prefs":
                 prefs = ler_prefs()
                 if pedido.get("tela") in ("mundo3d", "mundo", "olhos"):
@@ -423,7 +444,7 @@ def preparar_log():
 
 
 def main():
-    global TOKEN, NOTICIAS, PET
+    global TOKEN, NOTICIAS, PET, AGENDA, OUVIDO
     preparar_log()
     cfg = carregar_config()
     porta = int(cfg.get("porta", 8765))
@@ -439,6 +460,10 @@ def main():
     threading.Thread(target=manter_tunel_usb, args=(porta,), daemon=True).start()
     threading.Thread(target=anunciar_na_rede, args=(porta,), daemon=True).start()
     threading.Thread(target=NOTICIAS.rodar, daemon=True).start()
+    AGENDA = Agenda(carregar_config, log=log)
+    OUVIDO = Ouvido(AGENDA, carregar_config, TOKEN, log=log)
+    threading.Thread(target=AGENDA.rodar, daemon=True).start()
+    threading.Thread(target=OUVIDO.servir, daemon=True).start()
     log("[chrome] perfis encontrados: %s" % ", ".join("%s (%s)" % (p["nome"], p["dir"]) for p in chrome.listar_perfis()))
     log("Cadu agente rodando na porta %d — cabo e Wi-Fi (%s)  (Ctrl+C para parar)"
         % (porta, ", ".join(ips_locais()) or "sem rede"))

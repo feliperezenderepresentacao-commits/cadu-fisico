@@ -27,7 +27,7 @@ $s.Save()
 
 # Libera a porta 8765 no firewall do Windows (modo Wi-Fi). Pede permissao de administrador (clique em "Sim").
 $regra = "Remove-NetFirewallRule -DisplayName 'Cadu agente' -ErrorAction SilentlyContinue; " +
-         "New-NetFirewallRule -DisplayName 'Cadu agente' -Direction Inbound -Protocol TCP -LocalPort 8765 -Action Allow -Profile Any | Out-Null"
+         "New-NetFirewallRule -DisplayName 'Cadu agente' -Direction Inbound -Protocol TCP -LocalPort 8765,8767 -Action Allow -Profile Any | Out-Null"
 try {
     Start-Process powershell -Verb RunAs -Wait -ArgumentList "-NoProfile -Command `"$regra`""
     Write-Host "Firewall liberado para o modo Wi-Fi." -ForegroundColor Green

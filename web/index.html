@@ -41,6 +41,8 @@
   #veu3d.ver { opacity: 1; }
   #jogoFrame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; display: none; background: var(--fundo); }
   body.modo-jogo #jogoFrame { display: block; } body.modo-jogo #mundoTela { visibility: hidden; }
+  #ouvindo { position: absolute; top: 21vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--ciano); pointer-events: none; z-index: 5; }
+  #ouvindo.ver { display: block; -webkit-animation: pisca 0.8s steps(2) infinite; animation: pisca 0.8s steps(2) infinite; }
   #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
   body.modo-3d #auto3d.ver { display: block; -webkit-animation: pisca 1.6s steps(2) infinite; animation: pisca 1.6s steps(2) infinite; }
   @-webkit-keyframes pisca { 50% { opacity: .55; } } @keyframes pisca { 50% { opacity: .55; } }
@@ -155,6 +157,7 @@
   .item { float: left; width: 50%; padding: 1.8vmin; }
   .item > .caixa { position: relative; height: 15vmin; padding: 2.2vmin 32vmin 0 3vmin; }
   .item.ligada > .caixa { background: #1d3040; }
+  .item.cheia { width: 100%; } .item.cheia > .caixa { padding-right: 66vmin; }
   .item .nome { font-size: 3.9vmin; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item .sub { font-size: 2.8vmin; color: var(--suave); margin-top: 1.2vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item .lado { position: absolute; right: 2.4vmin; top: 0; bottom: 0; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
@@ -201,6 +204,7 @@
 </div>
 
 <iframe id="jogoFrame" title="jogo"></iframe>
+<div id="ouvindo" class="caixa">OUVINDO…</div>
 
 <div id="rosto"><div id="olhos"><div class="olho e"></div><div class="olho d"></div></div></div>
 
@@ -558,7 +562,7 @@
   // --- página 3: ajustes
   function ponte(fn) { try { return fn(); } catch (e) { return null; } }
   function itemAjuste(lista, nome, sub, botoes) {
-    var it = el("div", "item"), cx = el("div", "caixa");
+    var it = el("div", "item" + (botoes.length >= 2 ? " cheia" : "")), cx = el("div", "caixa");
     cx.appendChild(el("div", "nome", nome)); var s = el("div", "sub", sub); cx.appendChild(s);
     var lado = el("div", "lado opcoes");
     for (var i = 0; i < botoes.length; i++) (function (b) {
@@ -589,6 +593,19 @@
         { texto: "ligar", icone: "music", marcada: prefs.som !== false, fn: function () { mudarPref("som", true); } },
         { texto: "mudo", icone: "volume-x", marcada: prefs.som === false, fn: function () { mudarPref("som", false); } }]);
     }
+    var ve = null; try { ve = JSON.parse(Cadu.vozEstado()); } catch (e) {}
+    var sVoz = itemAjuste(L, "Voz e agenda", "verificando…", [
+      { texto: "ligar", icone: "music", marcada: !!(ve && ve.ligado), fn: function (s) { ponte(function () { Cadu.vozLigar(true); }); s.textContent = "ligado — diga \"Cadu\" perto do celular"; } },
+      { texto: "desligar", icone: "volume-x", marcada: !!(ve && !ve.ligado), fn: function (s) { ponte(function () { Cadu.vozLigar(false); }); s.textContent = "microfone desligado"; } },
+      { texto: "testar", icone: "bell", fn: function (s) {
+        pedir("POST", "/api/voz/frase", { frase: "Cadu, me lembra daqui a 1 minuto de testar o Cadu" }, function (er, r) { s.textContent = r && r.fala ? r.fala : "falhou"; });
+      } }]);
+    pedir("GET", "/api/voz", null, function (er, r) {
+      if (er || !r) { sVoz.textContent = "agente sem voz (atualize o PC)"; return; }
+      sVoz.textContent = (ve ? (ve.ligado ? "microfone ligado" : "microfone desligado") : "app sem voz (instale o APK 0.7)") +
+        " · " + (r.celular ? "ouvido conectado" : "ouvido desconectado") + " · " + (r.modelos === "ok" ? "reconhecimento ok" : r.modelos) +
+        " · cérebro " + (r.cerebro ? "ligado" : "desligado");
+    });
     itemAjuste(L, "Wi-Fi do celular", rede ? (!rede.wifiLigado ? "desligado" : (rede.rede ? rede.rede + " · " + rede.ip : "ligado, sem rede")) : "—", [
       { texto: "abrir", icone: "wifi", fn: function () { ponte(function () { Cadu.abrirWifi(); }); } }]);
     itemAjuste(L, "Conexão com o PC", (T ? "pelo Wi-Fi" : "pelo cabo") + (rede ? (rede.pareado ? " · pareado" : " · não pareado") : ""), [
@@ -662,6 +679,24 @@
   $("afechar").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(20); fecharAlerta(); });
   alerta.addEventListener("click", function (ev) { ev.stopPropagation(); if (urgente) abrirNoPC(urgente.k); fecharAlerta(); });
 
+  // ---------------------------------------------------------------- voz (Fase 2): ouvindo / anotado / lembrete tocando
+  var seqVoz = -1;
+  function buscarVoz() {
+    pedir("GET", "/api/voz?desde=" + Math.max(0, seqVoz), null, function (er, r) {
+      if (!er && r) {
+        $("ouvindo").className = r.ouvindo ? "caixa ver" : "caixa";
+        if (seqVoz >= 0) for (var i = 0; i < r.eventos.length; i++) {
+          var e = r.eventos[i];
+          if (e.tipo === "disparo") mostrarUrgente({ catNome: "⏰ Lembrete", titulo: e.texto, fonte: "Cadu", k: null });
+          else if (e.tipo === "pergunta") falar(e.resposta || "Hmm…");
+          else { falar("Anotei! " + e.texto + (e.quando_txt ? " · " + e.quando_txt : "")); if (window.Mundo3D && m3d) Mundo3D.surpreso(); }
+        }
+        seqVoz = r.seq;
+      }
+      setTimeout(buscarVoz, r && r.ouvindo ? 1000 : 2500);
+    });
+  }
+
   // ---------------------------------------------------------------- status
   function relogio() {
     var t = window.horaPC(), h = t.h, m = t.m;
@@ -694,6 +729,7 @@
   pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) prefs = p; aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
+  buscarVoz();
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();
 })();
 </script>

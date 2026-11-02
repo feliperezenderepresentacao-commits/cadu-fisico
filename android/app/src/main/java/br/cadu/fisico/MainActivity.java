@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
 
         escutarBeacon();
         procurarPC();
+        if (prefs.getBoolean("voz", true)) OuvidoService.ligar(this, true);  // Fase 2: agenda por voz
     }
 
     // ------------------------------------------------------------------ conexão
@@ -261,7 +262,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.5-mundo"; }
+        public String versao() { return "0.7-voz"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -349,6 +350,16 @@ public class MainActivity extends Activity {
         /** Esquece o pareamento (o próximo cabo pareia de novo). */
         @JavascriptInterface
         public void esquecerPareamento() { prefs.edit().remove("token").remove("ip").apply(); }
+
+        /** Fase 2: liga/desliga o ouvido (microfone repassado ao PC). */
+        @JavascriptInterface
+        public void vozLigar(boolean sim) { OuvidoService.ligar(MainActivity.this, sim); }
+
+        /** Situação do ouvido, em JSON. */
+        @JavascriptInterface
+        public String vozEstado() {
+            return "{\"ligado\":" + prefs.getBoolean("voz", true) + ",\"conectado\":" + OuvidoService.conectado + "}";
+        }
 
         /** A interface perdeu o agente: volta a procurar (cabo ou Wi-Fi). */
         @JavascriptInterface

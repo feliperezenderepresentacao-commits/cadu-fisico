@@ -15,3 +15,7 @@ agente/teste3d.json
 apk/
 agente/prefs.json
 agente/jogo.json
+agente/notas.json
+agente/notas.tmp
+agente/cerebro_chave.txt
+agente/modelos/

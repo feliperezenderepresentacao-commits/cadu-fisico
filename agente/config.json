@@ -119,5 +119,14 @@
       "tipo": "comando",
       "comando": "rundll32.exe user32.dll,LockWorkStation"
     }
-  ]
+  ],
+  "voz": {
+    "ativo": true,
+    "modelo_whisper": "small"
+  },
+  "cerebro": {
+    "ativo": true,
+    "url": "http://localhost:3001/v1",
+    "modelo": "auto"
+  }
 }
