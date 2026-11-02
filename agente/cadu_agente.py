@@ -30,13 +30,42 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+import chrome
 from noticias import Noticias
+from pet import Pet
 
 PASTA = Path(__file__).resolve().parent
 WEB = PASTA.parent / "web"
 CONFIG = PASTA / "config.json"
 ARQ_TOKEN = PASTA / "token.txt"
+ARQ_PREFS = PASTA / "prefs.json"
+PREFS_PADRAO = {"tela": "mundo"}
+
+
+def ler_prefs():
+    try:
+        return dict(PREFS_PADRAO, **json.loads(ARQ_PREFS.read_text(encoding="utf-8")))
+    except Exception:
+        return dict(PREFS_PADRAO)
 PORTA_BEACON = 8766
+TIPOS = {".js": "application/javascript", ".css": "text/css", ".woff": "font/woff", ".woff2": "font/woff2",
+         ".svg": "image/svg+xml", ".png": "image/png", ".txt": "text/plain; charset=utf-8"}
+PAGINAS = {"/": "index.html", "/index.html": "index.html", "/teste3d.html": "teste3d.html"}
+
+
+def achar_apk():
+    """APK mais novo disponível no PC (pasta apk/ do projeto ou Downloads)."""
+    cands = list((PASTA.parent / "apk").glob("*.apk"))
+    dl = Path(os.environ.get("USERPROFILE", "")) / "Downloads"
+    if dl.is_dir():
+        cands += list(dl.glob("cadu-fisico*.apk"))
+    cands = [c for c in cands if c.is_file()]
+    return max(cands, key=lambda c: c.stat().st_mtime) if cands else None
+
+
+def todos_botoes(cfg):
+    """Perfis do Chrome primeiro, depois os botões do config.json."""
+    return chrome.botoes(cfg) + list(cfg["botoes"])
 
 
 def carregar_config():
@@ -170,6 +199,8 @@ def executar(botao, cfg):
     if tipo == "url":
         webbrowser.open(botao["url"])
         return True, botao["rotulo"] + ": aberto no navegador."
+    if tipo == "chrome":
+        return chrome.abrir(botao["id"].split(":", 1)[1], cfg)
     if tipo == "status_vps":
         _cache_vps["t"] = 0
         v = checar_vps(cfg.get("vps_url"))
@@ -180,6 +211,7 @@ def executar(botao, cfg):
 
 
 NOTICIAS = None  # definido no main()
+PET = None
 
 
 # ---------------------------------------------------------------- servidor
@@ -203,6 +235,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(corpo)
 
+    def _arquivo(self, caminho, tipo, cache=True):
+        corpo = caminho.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Cache-Control", "max-age=86400" if cache else "no-store")
+        self.send_header("Content-Length", str(len(corpo)))
+        self.end_headers()
+        self.wfile.write(corpo)
+
     def _corpo(self):
         tam = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(tam) or b"{}")
@@ -213,30 +254,44 @@ class Handler(BaseHTTPRequestHandler):
         q = urllib.parse.parse_qs(u.query)
         if u.path == "/api/ping":  # usado pelo app para achar o PC (não revela nada)
             return self._json({"ok": True, "cadu": 1})
+        if u.path.startswith("/static/"):  # fontes, ícones e bibliotecas (públicos)
+            raiz = (WEB / "static").resolve()
+            alvo = (WEB / u.path.lstrip("/")).resolve()
+            if raiz in alvo.parents and alvo.is_file() and alvo.suffix in TIPOS:
+                return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2"))
+            return self._json({"erro": "não encontrado"}, 404)
         if not self._autorizado(q):
             return self._json({"erro": "não autorizado"}, 403)
 
         cfg = carregar_config()
-        if u.path in ("/", "/index.html"):
-            corpo = (WEB / "index.html").read_bytes()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(corpo)))
-            self.end_headers()
-            self.wfile.write(corpo)
+        if u.path in PAGINAS:
+            self._arquivo(WEB / PAGINAS[u.path], "text/html; charset=utf-8", cache=False)
         elif u.path == "/api/token":
             # Pareamento: só pelo cabo. O J3 guarda o token para usar no Wi-Fi.
             if not self._pelo_cabo():
                 return self._json({"erro": "pareie pelo cabo"}, 403)
             self._json({"token": TOKEN, "ips": ips_locais(), "porta": cfg.get("porta", 8765)})
         elif u.path == "/api/botoes":
-            self._json([{k: b.get(k) for k in ("id", "icone", "rotulo", "cor")} for b in cfg["botoes"]])
+            self._json([{k: b.get(k) for k in ("id", "icone", "rotulo", "cor")} for b in todos_botoes(cfg)])
         elif u.path == "/api/status":
             self._json({"hora": time.strftime("%H:%M"),
                         "vps": checar_vps(cfg.get("vps_url")),
                         "dormir": hora_de_dormir(cfg),
                         "via": "cabo" if self._pelo_cabo() else "wifi"})
+        elif u.path == "/api/pet":
+            self._json(PET.estado())
+        elif u.path == "/api/prefs":
+            self._json(ler_prefs())
+        elif u.path == "/api/apk":
+            a = achar_apk()
+            self._json({"tem": bool(a), "nome": a.name if a else None,
+                        "tamanho": a.stat().st_size if a else 0,
+                        "data": time.strftime("%d/%m %H:%M", time.localtime(a.stat().st_mtime)) if a else None})
+        elif u.path == "/apk":
+            a = achar_apk()
+            if not a:
+                return self._json({"erro": "nenhum APK no PC"}, 404)
+            self._arquivo(a, "application/vnd.android.package-archive", cache=False)
         elif u.path == "/api/noticias/config":
             self._json(NOTICIAS.config())
         elif u.path == "/api/avisos":
@@ -257,12 +312,27 @@ class Handler(BaseHTTPRequestHandler):
             pedido = self._corpo()
             if u.path == "/api/acao":
                 cfg = carregar_config()
-                botao = next((b for b in cfg["botoes"] if b["id"] == pedido.get("id")), None)
+                botao = next((b for b in todos_botoes(cfg) if b["id"] == pedido.get("id")), None)
                 if not botao:
                     return self._json({"ok": False, "msg": "Botão desconhecido."})
                 ok, msg = executar(botao, cfg)
                 log("[acao] %s -> %s" % (botao["id"], msg))
                 return self._json({"ok": ok, "msg": msg})
+            if u.path == "/api/pet":
+                msg, estado = PET.agir(pedido.get("acao"))
+                return self._json({"ok": True, "msg": msg, "pet": estado})
+            if u.path == "/api/prefs":
+                prefs = ler_prefs()
+                if pedido.get("tela") in ("mundo", "olhos"):
+                    prefs["tela"] = pedido["tela"]
+                ARQ_PREFS.write_text(json.dumps(prefs), encoding="utf-8")
+                return self._json({"ok": True, "prefs": prefs})
+            if u.path == "/api/teste3d":
+                r = {k: pedido.get(k) for k in ("webgl", "fps", "gpu", "navegador")}
+                r["quando"] = time.strftime("%d/%m/%Y %H:%M")
+                (PASTA / "teste3d.json").write_text(json.dumps(r, ensure_ascii=False, indent=1), encoding="utf-8")
+                log("[teste3d] %s" % r)
+                return self._json({"ok": True})
             if u.path == "/api/noticias/alterar":
                 ok = NOTICIAS.alterar(pedido.get("id"), pedido.get("ativa"), pedido.get("urgente"))
                 return self._json({"ok": ok, "categorias": NOTICIAS.config()})
@@ -296,7 +366,7 @@ def preparar_log():
 
 
 def main():
-    global TOKEN, NOTICIAS
+    global TOKEN, NOTICIAS, PET
     preparar_log()
     cfg = carregar_config()
     porta = int(cfg.get("porta", 8765))
@@ -307,6 +377,7 @@ def main():
         log("Agente já está rodando na porta %d." % porta)
         return
     TOKEN = obter_token()
+    PET = Pet()
     NOTICIAS = Noticias((cfg.get("noticias") or {}).get("intervalo_min", 15), log=log)
     threading.Thread(target=manter_tunel_usb, args=(porta,), daemon=True).start()
     threading.Thread(target=anunciar_na_rede, args=(porta,), daemon=True).start()

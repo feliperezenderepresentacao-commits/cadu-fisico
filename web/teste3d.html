@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Teste 3D</title>
+<!-- Mede se o J3 aguenta um mundo 3D low-poly (Three.js r149, MIT). Resultado vai para o agente (teste3d.json). -->
+<style>
+  @font-face { font-family: "Silkscreen"; src: url(/static/fontes/silkscreen-latin-400-normal.woff) format("woff"); }
+  @font-face { font-family: "Pixelify"; src: url(/static/fontes/pixelify-sans-latin-400-normal.woff) format("woff"); }
+  html, body { margin: 0; height: 100%; background: #0d1020; color: #f1f2f6; overflow: hidden; font-family: "Pixelify", monospace; }
+  canvas { position: absolute; top: 0; left: 0; }
+  #placar { position: absolute; top: 3vmin; left: 3vmin; padding: 2vmin 3vmin; background: rgba(13,16,32,.85); font-size: 3.6vmin; line-height: 1.5; }
+  #placar b { font-family: "Silkscreen", monospace; color: #ffd166; font-weight: 400; }
+  #fim { position: absolute; left: 10vmin; right: 10vmin; top: 22vmin; padding: 4vmin; background: #1d2540; text-align: center; display: none;
+         box-shadow: 0 -.6vmin 0 0 #39446b, 0 .6vmin 0 0 #39446b, -.6vmin 0 0 0 #39446b, .6vmin 0 0 0 #39446b; }
+  #fim h1 { font-family: "Silkscreen", monospace; font-weight: 400; font-size: 6vmin; margin: 0 0 2vmin; }
+  #fim p { font-size: 3.6vmin; margin: 1vmin 0; color: #9aa6cc; }
+  #sair { display: inline-block; margin-top: 3vmin; padding: 2vmin 5vmin; background: #141a2e; font-family: "Silkscreen", monospace; font-size: 3.6vmin;
+          box-shadow: 0 -.6vmin 0 0 #39446b, 0 .6vmin 0 0 #39446b, -.6vmin 0 0 0 #39446b, .6vmin 0 0 0 #39446b; }
+</style>
+</head>
+<body>
+<div id="placar"><b>TESTE 3D</b><br>preparando…</div>
+<div id="fim"><h1 id="veredito">—</h1><p id="detalhe"></p><p id="gpu"></p><span id="sair">voltar ao Cadu</span></div>
+<script>
+  var T = (location.search.match(/[?&]t=([^&]+)/) || [])[1] || "";
+  var resultado = { webgl: false, fps: 0, gpu: "", navegador: navigator.userAgent };
+  function enviar() {
+    var x = new XMLHttpRequest(); x.open("POST", "/api/teste3d", true);
+    x.setRequestHeader("Content-Type", "application/json");
+    if (T) x.setRequestHeader("X-Cadu-Token", decodeURIComponent(T));
+    x.send(JSON.stringify(resultado));
+  }
+  function terminar(titulo, cor, detalhe) {
+    var v = document.getElementById("veredito"); v.textContent = titulo; v.style.color = cor;
+    document.getElementById("detalhe").textContent = detalhe;
+    document.getElementById("gpu").textContent = "GPU: " + (resultado.gpu || "desconhecida");
+    document.getElementById("fim").style.display = "block";
+    enviar();
+  }
+  document.getElementById("sair").onclick = function () { location.href = "/" + (T ? "?t=" + T : ""); };
+
+  // 1) o navegador do J3 libera WebGL?
+  var gl = null, teste = document.createElement("canvas");
+  try { gl = teste.getContext("webgl") || teste.getContext("experimental-webgl"); } catch (e) {}
+  if (!gl) {
+    terminar("SEM 3D", "#ef476f", "Este celular não libera WebGL. O mundo 2.5D (pixel) continua sendo o caminho.");
+  } else {
+    resultado.webgl = true;
+    try { var dbg = gl.getExtension("WEBGL_debug_renderer_info"); resultado.gpu = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) {}
+    var s = document.createElement("script"); s.src = "/static/three.min.js"; s.onload = cena;
+    s.onerror = function () { terminar("ERRO", "#ef476f", "Não consegui carregar a biblioteca 3D."); };
+    document.body.appendChild(s);
+  }
+
+  // 2) cena low-poly parecida com o que seria o mundo 3D do Cadu
+  function cena() {
+    var W = window.innerWidth, H = window.innerHeight;
+    var r = new THREE.WebGLRenderer({ antialias: false });
+    r.setPixelRatio(1); r.setSize(W, H); r.setClearColor(0x8ecae6);
+    document.body.insertBefore(r.domElement, document.body.firstChild);
+    var sc = new THREE.Scene(); sc.fog = new THREE.Fog(0x8ecae6, 18, 40);
+    var cam = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
+    sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.9));
+    var sol = new THREE.DirectionalLight(0xffffff, 0.7); sol.position.set(5, 10, 4); sc.add(sol);
+    var chao = new THREE.Mesh(new THREE.PlaneGeometry(60, 60, 12, 12), new THREE.MeshLambertMaterial({ color: 0x6ab04c, flatShading: true }));
+    chao.rotation.x = -Math.PI / 2; sc.add(chao);
+    var tronco = new THREE.MeshLambertMaterial({ color: 0x7a4f32, flatShading: true }), copa = new THREE.MeshLambertMaterial({ color: 0x2c7d4c, flatShading: true });
+    for (var i = 0; i < 40; i++) {
+      var a = Math.random() * 6.28, d = 6 + Math.random() * 14;
+      var t = new THREE.Mesh(new THREE.CylinderGeometry(.2, .3, 1.2, 5), tronco); t.position.set(Math.cos(a) * d, .6, Math.sin(a) * d); sc.add(t);
+      var c = new THREE.Mesh(new THREE.ConeGeometry(1, 2.2, 6), copa); c.position.set(t.position.x, 2.2, t.position.z); sc.add(c);
+    }
+    var casa = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 3), new THREE.MeshLambertMaterial({ color: 0x5b6c9a, flatShading: true })); casa.position.set(-3, 1, -3); sc.add(casa);
+    var teto = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.6, 4), new THREE.MeshLambertMaterial({ color: 0xd1495b, flatShading: true })); teto.position.set(-3, 2.8, -3); teto.rotation.y = Math.PI / 4; sc.add(teto);
+    var cadu = new THREE.Mesh(new THREE.IcosahedronGeometry(.8, 1), new THREE.MeshLambertMaterial({ color: 0x7fd4c1, flatShading: true })); sc.add(cadu);
+    var olhoM = new THREE.MeshBasicMaterial({ color: 0x13222a });
+    var o1 = new THREE.Mesh(new THREE.BoxGeometry(.12, .25, .05), olhoM), o2 = o1.clone(); o1.position.set(-.25, .1, .78); o2.position.set(.25, .1, .78); cadu.add(o1); cadu.add(o2);
+
+    var inicio = performance.now(), quadros = 0, ultimo = inicio, DUR = 8000, placar = document.getElementById("placar");
+    function loop(agora) {
+      var dt = (agora - inicio) / 1000;
+      cam.position.set(Math.cos(dt * .3) * 9, 4.5, Math.sin(dt * .3) * 9); cam.lookAt(0, 1, 0);
+      cadu.position.set(Math.cos(dt) * 2, .8 + Math.abs(Math.sin(dt * 4)) * .6, Math.sin(dt) * 2); cadu.rotation.y = -dt + Math.PI;
+      r.render(sc, cam); quadros++;
+      if (agora - ultimo > 500) { placar.innerHTML = "<b>TESTE 3D</b><br>" + Math.round(quadros / ((agora - inicio) / 1000)) + " FPS · " + Math.max(0, Math.ceil((DUR - (agora - inicio)) / 1000)) + " s"; ultimo = agora; }
+      if (agora - inicio < DUR) return requestAnimationFrame(loop);
+      resultado.fps = Math.round(quadros / (DUR / 1000));
+      if (resultado.fps >= 25) terminar("APROVADO", "#06d6a0", resultado.fps + " FPS: dá para fazer o mundo do Cadu em 3D low-poly.");
+      else if (resultado.fps >= 15) terminar("NO LIMITE", "#ffd166", resultado.fps + " FPS: 3D só em cenas bem simples. O 2.5D pixel continua melhor.");
+      else terminar("NÃO AGUENTA", "#ef476f", resultado.fps + " FPS: 3D travaria. Ficamos com o mundo 2.5D pixel.");
+    }
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

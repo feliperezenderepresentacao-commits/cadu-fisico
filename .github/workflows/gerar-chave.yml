@@ -1,0 +1,31 @@
+name: Gerar chave do app (rodar 1 vez)
+
+# Gera a chave de assinatura FIXA do app Cadu.
+# Você baixa o resultado (fica disponível só por 1 dia) e cola os 2 textos em
+# Settings → Secrets and variables → Actions:  CADU_KEYSTORE_B64  e  CADU_KEY_PASS.
+# Depois disso, todo APK sai com a mesma assinatura e o J3 atualiza sem cabo.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  chave:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Gerar
+        run: |
+          mkdir chave
+          SENHA=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 24)
+          keytool -genkeypair -keystore cadu.keystore -alias cadu -keyalg RSA -keysize 2048 -validity 36500 \
+            -storepass "$SENHA" -keypass "$SENHA" -dname "CN=Cadu Fisico, C=BR" >/dev/null
+          base64 -w0 cadu.keystore > chave/CADU_KEYSTORE_B64.txt
+          printf "%s" "$SENHA" > chave/CADU_KEY_PASS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chave-cadu
+          path: chave/
+          retention-days: 1

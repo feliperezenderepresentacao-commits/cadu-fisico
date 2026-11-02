@@ -6,7 +6,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.widget.Toast;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Vibrator;
@@ -19,6 +21,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
@@ -222,6 +227,12 @@ public class MainActivity extends Activity {
         web.evaluateJavascript("window.aoVoltar && window.aoVoltar()", null);
     }
 
+    private void avisar(final String texto) {
+        web.post(new Runnable() {
+            public void run() { Toast.makeText(MainActivity.this, texto, Toast.LENGTH_LONG).show(); }
+        });
+    }
+
     private void abrir(final String acao) {
         web.post(new Runnable() {
             public void run() {
@@ -250,7 +261,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.4-ajustes"; }
+        public String versao() { return "0.5-mundo"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -293,6 +304,46 @@ public class MainActivity extends Activity {
             return "{\"wifiLigado\":" + ligado + ",\"rede\":\"" + ssid.replace("\\", "") + "\",\"ip\":\"" + ip
                     + "\",\"pareado\":" + (prefs.getString("token", null) != null)
                     + ",\"ipPC\":\"" + (prefs.getString("ip", "") == null ? "" : prefs.getString("ip", "")) + "\"}";
+        }
+
+        /**
+         * Atualização sem cabo: baixa o APK que o agente do PC oferece (/apk)
+         * e abre o instalador do Android. Você só confirma "Instalar" na tela.
+         */
+        @JavascriptInterface
+        public boolean atualizarApp(final String url) {
+            if (url == null || !(url.startsWith("http://127.0.0.1:") || url.startsWith("http://" + prefs.getString("ip", "-") + ":"))) return false;
+            avisar("Baixando atualização…");
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    HttpURLConnection c = null;
+                    try {
+                        c = (HttpURLConnection) new URL(url).openConnection();
+                        c.setConnectTimeout(5000); c.setReadTimeout(30000);
+                        String token = prefs.getString("token", null);
+                        if (token != null) c.setRequestProperty("X-Cadu-Token", token);
+                        if (c.getResponseCode() != 200) { avisar("PC sem APK novo (" + c.getResponseCode() + ")."); return; }
+                        File destino = new File(getExternalFilesDir(null), "cadu-novo.apk");
+                        InputStream in = c.getInputStream();
+                        FileOutputStream out = new FileOutputStream(destino);
+                        byte[] buf = new byte[16384]; int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        out.close(); in.close();
+                        destino.setReadable(true, false);
+                        Intent i = new Intent(Intent.ACTION_VIEW);
+                        i.setDataAndType(Uri.fromFile(destino), "application/vnd.android.package-archive");
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Exception e) {
+                        avisar("Falhou ao baixar: " + e.getMessage());
+                    } finally {
+                        if (c != null) c.disconnect();
+                    }
+                }
+            });
+            t.setDaemon(true);
+            t.start();
+            return true;
         }
 
         /** Esquece o pareamento (o próximo cabo pareia de novo). */
