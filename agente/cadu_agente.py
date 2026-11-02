@@ -15,6 +15,7 @@ Segurança:
 Uso:  python cadu_agente.py
 """
 import json
+import re
 import os
 import secrets
 import shutil
@@ -37,6 +38,7 @@ from pet import Pet
 import cerebro
 from agenda import Agenda
 from voz import Ouvido
+import clima
 
 PASTA = Path(__file__).resolve().parent
 WEB = PASTA.parent / "web"
@@ -277,6 +279,9 @@ def executar(botao, cfg):
     if tipo == "comando":
         subprocess.Popen(os.path.expandvars(botao["comando"]), shell=True)
         return True, botao["rotulo"] + ": aberto."
+    if tipo == "bomdia":
+        threading.Thread(target=dar_bom_dia, daemon=True).start()
+        return True, "Bom dia a caminho…"
     if tipo == "protocolo":   # ex.: steam://rungameid/730 (CS2)
         try:
             os.startfile(botao["url"])
@@ -418,6 +423,8 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/voz":
             ev = [e for e in AGENDA.eventos if e["seq"] > int((q.get("desde") or ["0"])[0] or 0)]
             self._json(dict(OUVIDO.estado, cerebro=cerebro.disponivel(carregar_config()), eventos=ev, seq=AGENDA.seq_ev))
+        elif u.path == "/api/clima":
+            self._json(clima.obter(carregar_config()) or {})
         elif u.path == "/api/notas":
             self._json(AGENDA.lista())
         elif u.path == "/api/prefs":
@@ -574,6 +581,57 @@ def preparar_log():
         print("\n=== %s — agente iniciado ===" % time.strftime("%d/%m/%Y %H:%M:%S"))
 
 
+# ---------------------------------------------------------------- BOM DIA DO CADU
+def montar_bom_dia():
+    """Resumo falado: clima, lembretes de hoje, sistemas e 3 manchetes."""
+    cfg = carregar_config()
+    h = int(time.strftime("%H"))
+    partes = [("Bom dia" if h < 12 else ("Boa tarde" if h < 18 else "Boa noite")) + ", Felipe!"]
+    partes.append(clima.frase(clima.obter(cfg)))
+    hoje = time.strftime("%Y-%m-%d")
+    lemb = [n for n in AGENDA.lista() if n.get("quando") and time.strftime("%Y-%m-%d", time.localtime(n["quando"])) == hoje and not n.get("disparado")]
+    if lemb:
+        itens = ["%s às %s" % (n["texto"], time.strftime("%H:%M", time.localtime(n["quando"]))) for n in sorted(lemb, key=lambda n: n["quando"])[:4]]
+        partes.append("Hoje você tem %d lembrete%s: %s." % (len(lemb), "" if len(lemb) == 1 else "s", "; ".join(itens)))
+    else:
+        partes.append("Nenhum lembrete marcado para hoje.")
+    v = checar_vps(cfg.get("vps_url"))
+    if v is not None:
+        partes.append("A VPS está no ar." if v.get("ok") else "Atenção: a VPS está fora do ar!")
+    manchetes = []
+    with NOTICIAS.trava:
+        for lista in NOTICIAS.recentes.values():
+            if lista:
+                manchetes.append(lista[0]["titulo"])
+    if manchetes:
+        partes.append("Manchetes: " + ". ".join(m.rstrip(".") for m in manchetes[:3]) + ".")
+    return " ".join(partes)
+
+
+def rodar_bom_dia():
+    """Fala o Bom dia sozinho no horário do config ("bom_dia": "07:30"), uma vez por dia."""
+    feito = None
+    while True:
+        try:
+            alvo = (carregar_config().get("bom_dia") or "07:30").strip()
+            hoje = time.strftime("%Y-%m-%d")
+            if alvo and alvo != "desligado" and time.strftime("%H:%M") >= alvo and feito != hoje and time.strftime("%H:%M") < "12:00":
+                feito = hoje
+                dar_bom_dia()
+        except Exception as e:
+            log("[bomdia] erro: %s" % e)
+        time.sleep(30)
+
+
+def dar_bom_dia(falar=True):
+    texto = montar_bom_dia()
+    log("[bomdia] " + texto[:120])
+    AGENDA._evento(tipo="bomdia", texto=texto)
+    if falar:   # pela voz quem fala é o ouvido (voz.py), para não repetir
+        OUVIDO.falar(texto)
+    return texto
+
+
 def main():
     global TOKEN, NOTICIAS, PET, AGENDA, OUVIDO
     preparar_log()
@@ -595,6 +653,8 @@ def main():
     OUVIDO = Ouvido(AGENDA, carregar_config, TOKEN, log=log)
     threading.Thread(target=AGENDA.rodar, daemon=True).start()
     threading.Thread(target=OUVIDO.servir, daemon=True).start()
+    AGENDA.comando = lambda frase: dar_bom_dia(falar=False) if re.match(r"^\W*(bom dia|boa tarde|boa noite|resumo( do dia)?|me (d[aá]|fala) o resumo)\b", frase, re.I) else None
+    threading.Thread(target=rodar_bom_dia, daemon=True).start()
     log("[chrome] perfis encontrados: %s" % ", ".join("%s (%s)" % (p["nome"], p["dir"]) for p in chrome.listar_perfis()))
     log("Cadu agente rodando na porta %d — cabo e Wi-Fi (%s)  (Ctrl+C para parar)"
         % (porta, ", ".join(ips_locais()) or "sem rede"))

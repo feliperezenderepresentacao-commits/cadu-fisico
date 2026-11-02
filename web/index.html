@@ -105,6 +105,8 @@
   #rTopo { position: absolute; top: 5vmin; left: 0; right: 0; text-align: center; pointer-events: none; }
   #rHora { font-family: "Orbitron", sans-serif; font-weight: 700; font-size: 12vmin; letter-spacing: .08em; color: #cfeffd; opacity: .85; }
   #rData { font-family: "Oxanium", sans-serif; font-size: 3.6vmin; color: var(--suave); letter-spacing: .2em; text-transform: uppercase; margin-top: .5vmin; }
+  #rClima { font-family: "Oxanium", sans-serif; font-size: 3.6vmin; color: #9fd3ff; margin-top: 1vmin; }
+  #hClima { font-family: "Oxanium", sans-serif; font-size: 3vmin; color: #cfeffd; text-shadow: var(--p) var(--p) 0 #000; }
   #rPilha { position: absolute; top: 4vmin; right: 4vmin; }
   #rNome { position: absolute; bottom: 6vmin; left: 0; right: 0; text-align: center; font-family: "Orbitron", sans-serif; font-size: 3.4vmin;
            color: var(--amarelo); letter-spacing: .2em; opacity: 0; -webkit-transition: opacity .4s; transition: opacity .4s; pointer-events: none; }
@@ -287,7 +289,7 @@
     <div class="barra" id="bAlegria"></div>
     <div class="barra" id="bEnergia"></div>
   </div>
-  <div id="hudDir"><div id="relogio">--:--</div><div class="pilhaCx" id="hPilha"></div><div id="conexao"></div></div>
+  <div id="hudDir"><div id="relogio">--:--</div><div id="hClima"></div><div class="pilhaCx" id="hPilha"></div><div id="conexao"></div></div>
   <div id="balao"></div>
   <div id="ferramentas"></div>
 </div>
@@ -299,7 +301,7 @@
   <div><span class="acao caixa" id="codigoOk">confirmar</span><span class="acao caixa" id="codigoOutro">outro código</span><span class="acao caixa" id="codigoSair">fechar</span></div></div>
 
 <div id="rosto">
-  <div id="rTopo"><div id="rHora">--:--</div><div id="rData"></div></div>
+  <div id="rTopo"><div id="rHora">--:--</div><div id="rData"></div><div id="rClima"></div></div>
   <div class="pilhaCx" id="rPilha"></div>
   <div id="olhos" class="e0"><div class="olho e"><i class="pu"></i></div><div class="olho d"><i class="pu"></i></div></div>
   <div id="rNome"></div>
@@ -985,6 +987,7 @@
         $("ouvindo").className = r.ouvindo ? "caixa ver" : "caixa";
         if (seqVoz >= 0) for (var i = 0; i < r.eventos.length; i++) {
           var e = r.eventos[i];
+          if (e.tipo === "bomdia") { mostrarUrgente({ catNome: "Resumo do dia", titulo: e.texto, fonte: "Cadu", k: null }); continue; }
           if (e.tipo === "feito") { if (pagina === 1 && painel.className) carregarNotas(); continue; }
           if (e.tipo === "disparo") mostrarUrgente({ catNome: "⏰ Lembrete", titulo: e.texto, fonte: "Cadu", k: null });
           else if (e.tipo === "pergunta") falar(e.resposta || "Hmm…");
@@ -1044,6 +1047,16 @@
     else if (navigator.getBattery) navigator.getBattery().then(function (x) { desenharPilha(Math.round(x.level * 100), x.charging); });
   }
   lerBateria(); setInterval(lerBateria, 60000);
+
+  // ---- clima (Open-Meteo, pelo PC)
+  function lerClima() {
+    pedir("GET", "/api/clima", null, function (er, c) {
+      if (er || !c || c.temp === undefined) return;
+      $("hClima").textContent = c.temp + "° " + c.texto;
+      $("rClima").textContent = c.temp + "° · " + c.texto + " · máx " + c.max + "° mín " + c.min + "°" + (c.chuva >= 30 ? " · chuva " + c.chuva + "%" : "");
+    });
+  }
+  lerClima(); setInterval(lerClima, 15 * 60000);
 
   buscarVoz(); brilho(-1);   // ao abrir a tela, o brilho volta ao normal
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();

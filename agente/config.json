@@ -36,6 +36,13 @@
   },
   "botoes": [
     {
+      "id": "bomdia",
+      "icone": "sun",
+      "rotulo": "Bom dia",
+      "tipo": "bomdia",
+      "cor": "#ffd166"
+    },
+    {
       "id": "vscode",
       "icone": "code",
       "rotulo": "VS Code",
@@ -136,5 +143,11 @@
     "ativo": true,
     "url": "http://localhost:3001/v1",
     "modelo": "auto"
+  },
+  "bom_dia": "07:30",
+  "cidade": {
+    "nome": "Goiânia",
+    "lat": -16.68,
+    "lon": -49.25
   }
 }

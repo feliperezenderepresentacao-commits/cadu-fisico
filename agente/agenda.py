@@ -160,6 +160,7 @@ class Agenda:
         self.seq_ev = 0
         self.falar_no_celular = None  # definido pelo ouvido (voz.py)
         self.postits = {}
+        self.comando = None   # comandos de voz (ex.: "bom dia") — definido pelo agente
 
     def _carregar(self):
         try:
@@ -190,6 +191,10 @@ class Agenda:
         frase = limpar_chamado(frase_bruta)
         if len(frase) < 2:
             return "Não entendi. Fala de novo?", None
+        if self.comando:
+            resposta = self.comando(frase)
+            if resposta:
+                return resposta, None
         cfg = self.cfg_fn()
         r = None
         if cerebro.disponivel(cfg):
