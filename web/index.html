@@ -379,7 +379,7 @@
           }
         });
         m3d = true;
-        Mundo3D.config({ tour: prefs.tour !== false, som: prefs.som !== false });
+        Mundo3D.config({ tour: prefs.tour !== false, som: prefs.som !== false, estilo: prefs.estilo || "bolinha" });
         pedir("GET", "/api/jogo", null, function (er, j) { if (!er && j) Mundo3D.jogo(j); });
         if (petEstado) Mundo3D.estado(petEstado);
         cb();
@@ -540,6 +540,11 @@
       { texto: "pixel", icone: "home", marcada: modoTela === "mundo", fn: function () { trocarModo("mundo"); } },
       { texto: "olhos", icone: "eye", marcada: modoTela === "olhos", fn: function () { trocarModo("olhos"); } }]);
     if (modoTela === "mundo3d") {
+      var est = prefs.estilo || "bolinha";
+      itemAjuste(L, "Visual do Cadu", { bolinha: "bolinha amarela", ursinho: "ursinho", mochi: "gatinho mochi" }[est], [
+        { texto: "bolinha", icone: "sun", marcada: est === "bolinha", fn: function () { mudarPref("estilo", "bolinha"); } },
+        { texto: "ursinho", icone: "heart", marcada: est === "ursinho", fn: function () { mudarPref("estilo", "ursinho"); } },
+        { texto: "gatinho", icone: "star", marcada: est === "mochi", fn: function () { mudarPref("estilo", "mochi"); } }]);
       itemAjuste(L, "Passeio automático", prefs.tour !== false ? "ligado: sozinho, ele visita os 5 mundos" : "desligado: fica no mundo atual", [
         { texto: "ligar", icone: "map", marcada: prefs.tour !== false, fn: function () { mudarPref("tour", true); } },
         { texto: "desligar", icone: "close", marcada: prefs.tour === false, fn: function () { mudarPref("tour", false); } }]);

@@ -40,7 +40,7 @@ CONFIG = PASTA / "config.json"
 ARQ_TOKEN = PASTA / "token.txt"
 ARQ_PREFS = PASTA / "prefs.json"
 ARQ_JOGO = PASTA / "jogo.json"
-PREFS_PADRAO = {"tela": "mundo3d", "tour": True, "som": True}
+PREFS_PADRAO = {"tela": "mundo3d", "tour": True, "som": True, "estilo": "bolinha"}
 
 
 def ler_prefs():
@@ -365,6 +365,8 @@ class Handler(BaseHTTPRequestHandler):
                 prefs = ler_prefs()
                 if pedido.get("tela") in ("mundo3d", "mundo", "olhos"):
                     prefs["tela"] = pedido["tela"]
+                if pedido.get("estilo") in ("bolinha", "ursinho", "mochi"):
+                    prefs["estilo"] = pedido["estilo"]
                 for k in ("tour", "som"):
                     if isinstance(pedido.get(k), bool):
                         prefs[k] = pedido[k]

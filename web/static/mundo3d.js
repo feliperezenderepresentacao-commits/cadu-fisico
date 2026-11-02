@@ -185,40 +185,73 @@ var Mundo3D = (function () {
     }
   }
 
-  // ================================================================== o CADU v2
-  function criarCadu(cor) {
+  // ================================================================== o CADU v3 — bichinho fofo (3 visuais originais)
+  var ESTILOS = {
+    bolinha: { pele: 0xffc857, barriga: 0xfff1cf, pe: 0xf08a24, orelha: "broto" },
+    ursinho: { pele: 0xc98f5e, barriga: 0xf6e1c6, pe: 0x8a5a3b, orelha: "redonda" },
+    mochi:   { pele: 0xfff4ea, barriga: 0xffffff, pe: 0xf2b5a7, orelha: "gato" }
+  };
+  var estiloCadu = "bolinha";
+  var TAM_FASE = { ovo: 0.8, bebe: 0.82, crianca: 0.93, adulto: 1.04 };
+  function criarCadu() {
+    var E = ESTILOS[estiloCadu] || ESTILOS.bolinha;
     var g = new THREE.Group(), corpoG = new THREE.Group(); g.add(corpoG);
-    var pele = new THREE.MeshLambertMaterial({ color: cor || 0x7fd4c1 });
-    var corpo = new THREE.Mesh(new THREE.SphereGeometry(0.55, 18, 14), pele); corpo.position.y = 0.6; corpo.scale.set(1, 0.93, 0.95); corpoG.add(corpo);
-    var barriga = malha(new THREE.SphereGeometry(0.36, 14, 10), 0xdffcf4, 0, 0.47, 0.3, { liso: true }); barriga.scale.set(1, 0.85, 0.55); corpoG.add(barriga);
-    var olhos = [];
+    var pele = new THREE.MeshLambertMaterial({ color: E.pele });
+    function liso(geo, cor) { return new THREE.Mesh(geo, cor === undefined ? pele : new THREE.MeshLambertMaterial({ color: cor })); }
+    var corpo = liso(new THREE.SphereGeometry(0.55, 22, 16)); corpo.position.y = 0.6; corpo.scale.set(1.04, 0.9, 0.96); corpoG.add(corpo);
+    var barriga = liso(new THREE.SphereGeometry(0.34, 18, 12), E.barriga); barriga.position.set(0, 0.45, 0.33); barriga.scale.set(1.05, 0.88, 0.5); corpoG.add(barriga);
+    // olhos de pontinho (sem branco) com dois brilhos — estilo bichinho virtual
+    var olhos = [], preto = new THREE.MeshBasicMaterial({ color: 0x2b1d14 }), branco = new THREE.MeshBasicMaterial({ color: 0xffffff });
     for (var s = -1; s <= 1; s += 2) {
-      var o = new THREE.Group(); o.position.set(s * 0.19, 0.73, 0.43);
-      var branco = malha(new THREE.SphereGeometry(0.145, 12, 10), 0xffffff, 0, 0, 0, { liso: true }); branco.scale.z = 0.55; o.add(branco);
-      var pupila = malha(new THREE.SphereGeometry(0.088, 10, 8), 0x13222a, 0, -0.01, 0.06, null, "B"); o.add(pupila);
-      var brilho = malha(new THREE.SphereGeometry(0.03, 6, 4), 0xffffff, 0.035, 0.035, 0.12, null, "B"); o.add(brilho);
-      o.userData = { pupila: pupila, brilho: brilho }; corpoG.add(o); olhos.push(o);
+      var o = new THREE.Group(); o.position.set(s * 0.2, 0.68, 0.5); o.rotation.y = s * 0.28;
+      var olho = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), preto); olho.scale.set(0.85, 1.12, 0.45); o.add(olho);
+      var b1 = new THREE.Mesh(new THREE.SphereGeometry(0.027, 6, 5), branco); b1.position.set(0.022, 0.03, 0.03); olho.add(b1);
+      var b2 = new THREE.Mesh(new THREE.SphereGeometry(0.013, 5, 4), branco); b2.position.set(-0.02, -0.03, 0.03); olho.add(b2);
+      o.userData = { pupila: olho, brilho: b1 }; corpoG.add(o); olhos.push(o);
     }
-    var sorriso = malha(new THREE.TorusGeometry(0.075, 0.02, 6, 12, Math.PI), 0x13222a, 0, 0.53, 0.515, null, "B"); sorriso.rotation.z = Math.PI; corpoG.add(sorriso);
-    var bocaA = malha(new THREE.SphereGeometry(0.07, 8, 6), 0x6b1d2e, 0, 0.5, 0.5, null, "B"); bocaA.scale.z = 0.5; bocaA.visible = false; corpoG.add(bocaA);
+    var bocaG = new THREE.Group(); bocaG.position.set(0, 0.55, 0.535); corpoG.add(bocaG);
+    var sorriso = new THREE.Group();
+    for (s = -1; s <= 1; s += 2) { var arco = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.011, 5, 10, Math.PI), preto); arco.rotation.z = Math.PI; arco.position.x = s * 0.032; sorriso.add(arco); } // boquinha "w"
+    bocaG.add(sorriso);
+    var bocaA = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0x8c2f39 })); bocaA.scale.set(1, 1.15, 0.4); bocaA.visible = false; bocaG.add(bocaA);
     var boch = [];
-    for (s = -1; s <= 1; s += 2) { var b = malha(new THREE.CircleGeometry(0.075, 12), 0xff8fa3, s * 0.33, 0.58, 0.44, { transparent: true, opacity: 0.75 }, "B"); b.rotation.y = s * 0.65; corpoG.add(b); boch.push(b); }
-    var haste = malha(new THREE.CylinderGeometry(0.022, 0.028, 0.32, 5), 0x2a5a52, 0.06, 1.25, 0); haste.rotation.z = -0.15; corpoG.add(haste);
-    var bulbo = malha(new THREE.SphereGeometry(0.085, 10, 8), 0xffe066, 0.1, 1.43, 0, null, "B"); corpoG.add(bulbo);
-    var halo = malha(new THREE.SphereGeometry(0.16, 10, 8), 0xffe066, 0.1, 1.43, 0, { transparent: true, opacity: 0.25, depthWrite: false }, "B"); corpoG.add(halo);
+    for (s = -1; s <= 1; s += 2) { var b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6), new THREE.MeshBasicMaterial({ color: 0xff8fa3, transparent: true, opacity: 0.6 })); b.scale.set(1.3, 0.7, 0.25); b.position.set(s * 0.34, 0.58, 0.44); b.rotation.y = s * 0.6; corpoG.add(b); boch.push(b); }
+    // topo da cabeça conforme o visual
+    var topo = new THREE.Group(); topo.position.y = 1.08; corpoG.add(topo);
+    var halo = new THREE.Mesh(new THREE.SphereGeometry(0.01, 3, 2), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })); topo.add(halo);
+    if (E.orelha === "broto") {
+      var haste = liso(new THREE.CylinderGeometry(0.018, 0.024, 0.16, 6), 0x3a7d44); haste.position.y = 0.06; topo.add(haste);
+      for (s = -1; s <= 1; s += 2) { var fol = liso(new THREE.SphereGeometry(0.1, 10, 6), s < 0 ? 0x6abf69 : 0x81c784); fol.scale.set(1, 0.32, 0.55); fol.position.set(s * 0.09, 0.15, 0); fol.rotation.z = s * 0.45; topo.add(fol); }
+    } else if (E.orelha === "redonda") {
+      for (s = -1; s <= 1; s += 2) {
+        var ore = liso(new THREE.SphereGeometry(0.15, 12, 10)); ore.scale.set(1, 1, 0.6); ore.position.set(s * 0.33, -0.12, 0); topo.add(ore);
+        var dentro = liso(new THREE.SphereGeometry(0.09, 10, 8), 0xf2a7a0); dentro.scale.set(1, 1, 0.4); dentro.position.set(s * 0.33, -0.12, 0.07); topo.add(dentro);
+      }
+      var focinho = liso(new THREE.SphereGeometry(0.15, 14, 10), E.barriga); focinho.scale.set(1.15, 0.8, 0.55); focinho.position.set(0, 0.56, 0.47); corpoG.add(focinho);
+      var nariz = liso(new THREE.SphereGeometry(0.045, 10, 8), 0x3b2418); nariz.scale.set(1.3, 0.9, 0.7); nariz.position.set(0, 0.6, 0.555); corpoG.add(nariz);
+      bocaG.position.set(0, 0.515, 0.555);
+    } else {
+      for (s = -1; s <= 1; s += 2) {
+        var cone = liso(new THREE.ConeGeometry(0.19, 0.36, 4)); cone.position.set(s * 0.28, 0.0, 0); cone.rotation.set(0, Math.PI / 4, s * -0.35); topo.add(cone);
+        var cin = liso(new THREE.ConeGeometry(0.1, 0.2, 4), 0xffb3c1); cin.position.set(s * 0.275, -0.02, 0.08); cin.rotation.set(0, Math.PI / 4, s * -0.35); topo.add(cin);
+      }
+      var rabo = liso(new THREE.TorusGeometry(0.16, 0.05, 6, 12, Math.PI * 1.2)); rabo.position.set(0.15, 0.35, -0.55); rabo.rotation.set(0, Math.PI / 2, 0.4); corpoG.add(rabo);
+    }
     var bracos = [];
-    for (s = -1; s <= 1; s += 2) { var br = new THREE.Group(); br.position.set(s * 0.5, 0.55, 0.05); var mb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), pele); mb.scale.set(0.75, 1.1, 0.75); mb.position.y = -0.06; br.add(mb); corpoG.add(br); bracos.push(br); }
+    for (s = -1; s <= 1; s += 2) { var br = new THREE.Group(); br.position.set(s * 0.5, 0.5, 0.12); var mb = liso(new THREE.SphereGeometry(0.1, 10, 8)); mb.scale.set(0.8, 1.1, 0.8); mb.position.y = -0.05; br.add(mb); corpoG.add(br); bracos.push(br); }
     var pes = [];
-    for (s = -1; s <= 1; s += 2) { var pe = malha(new THREE.SphereGeometry(0.15, 10, 8), 0x3b8f80, s * 0.22, 0.07, 0.08, { liso: true }); pe.scale.set(1, 0.55, 1.3); g.add(pe); pes.push(pe); }
+    for (s = -1; s <= 1; s += 2) { var pe = liso(new THREE.SphereGeometry(0.13, 12, 8), E.pe); pe.scale.set(1, 0.55, 1.25); pe.position.set(s * 0.22, 0.07, 0.12); g.add(pe); pes.push(pe); }
     var exc = new THREE.Group();
     exc.add(malha(new THREE.BoxGeometry(0.11, 0.32, 0.11), 0xffd166, 0, 2.05, 0, null, "B")); exc.add(malha(new THREE.BoxGeometry(0.11, 0.11, 0.11), 0xffd166, 0, 1.78, 0, null, "B"));
     exc.visible = false; g.add(exc);
     g.add(sombra(0.5));
-    g.userData = { corpoG: corpoG, corpo: corpo, pele: pele, olhos: olhos, sorriso: sorriso, bocaA: bocaA, boch: boch, bracos: bracos, pes: pes, exc: exc,
-      halo: halo, bulbo: bulbo, pulo: 0, vy: 0, alt: 0, squash: 0, surpresa: 0, andando: false, vel: 0, piscar: 2, olhando: null,
+    g.userData = { corpoG: corpoG, corpo: corpo, pele: pele, corBase: new THREE.Color(E.pele), olhos: olhos, sorriso: sorriso, bocaA: bocaA, boch: boch, bracos: bracos, pes: pes, exc: exc,
+      halo: halo, topo: topo, pulo: 0, vy: 0, alt: 0, squash: 0, surpresa: 0, andando: false, vel: 0, piscar: 2, olhando: null,
       acenar: 0, comendo: 0, sentado: false, dormindo: false, alvo: null, aoChegar: null, chao: null };
     return g;
   }
+  var COR_DOENTE = new THREE.Color(0xb5c96b);
+  function g0(c, tf) { var k = c.userData.escBase || (c.userData.escBase = c.scale.x); c.scale.setScalar(k * tf); }
   function pular(c, forca) { var u = c.userData; if (u.alt <= 0.01) { u.vy = forca || 4.2; u.squash = -0.25; som("pulo"); } }
   function animarCadu(c, dt) {
     var u = c.userData, dorme = u.dormindo, cg = u.corpoG;
@@ -229,6 +262,7 @@ var Mundo3D = (function () {
     var passo = u.andando ? Math.abs(Math.sin(tempo * 13)) * 0.12 : 0;
     var sy = 1 - u.squash + resp + (u.vy > 0 ? 0.12 : 0), sxz = 1 + u.squash * 0.6 - resp * 0.5;
     if (u.sentado) { sy *= 0.85; sxz *= 1.08; }
+    var tf = TAM_FASE[pet.fase] || 1; g0(c, tf);
     cg.scale.set(sxz, sy, sxz); cg.position.y = u.alt + passo;
     for (var i = 0; i < 2; i++) {
       u.pes[i].position.y = 0.07 + u.alt + (u.andando ? Math.max(0, Math.sin(tempo * 13 + i * Math.PI)) * 0.14 : 0);
@@ -250,20 +284,20 @@ var Mundo3D = (function () {
     }
     for (i = 0; i < 2; i++) {
       var o = u.olhos[i]; o.scale.set(surpreso ? 1.25 : 1, fech * (surpreso ? 1.25 : 1), 1);
-      o.userData.pupila.position.x = suave(o.userData.pupila.position.x, px, dt * 8);
-      o.userData.pupila.position.y = suave(o.userData.pupila.position.y, py, dt * 8);
+      o.userData.pupila.position.x = suave(o.userData.pupila.position.x, px * 0.4, dt * 8);
+      o.userData.pupila.position.y = suave(o.userData.pupila.position.y, py * 0.4, dt * 8);
       u.boch[i].visible = (pet.humor === "feliz" || u.acenar > 0) && !doenteFlag;
     }
     // boca
     var abre = surpreso || (u.comendo > 0 && Math.sin(tempo * 18) > 0);
     u.comendo = Math.max(0, u.comendo - dt);
     u.bocaA.visible = abre; u.sorriso.visible = !abre;
-    u.sorriso.rotation.z = (pet.humor === "triste" || doenteFlag) ? 0 : Math.PI;
-    u.sorriso.position.y = (pet.humor === "triste" || doenteFlag) ? 0.49 : 0.53;
+    u.sorriso.rotation.z = (pet.humor === "triste" || doenteFlag) ? Math.PI : 0;
     u.exc.visible = surpreso; u.exc.position.y = u.alt;
-    // antena brilha
-    var brilho = 0.18 + Math.sin(tempo * 3) * 0.08; u.halo.material.opacity = dorme ? 0.05 : brilho;
-    u.pele.color.setHex(doenteFlag ? 0xa8c96b : (pet.humor === "triste" ? 0x6aa99c : 0x7fd4c1));
+    // broto/orelhas balançam; cor muda com o humor
+    u.topo.rotation.z = Math.sin(tempo * 3) * 0.06 + (u.andando ? Math.sin(tempo * 13) * 0.08 : 0);
+    u.pele.color.copy(u.corBase);
+    if (doenteFlag) u.pele.color.lerp(COR_DOENTE, 0.45); else if (pet.humor === "triste") u.pele.color.multiplyScalar(0.82);
   }
   function mover(c, dt, velMax, alturaFn) {
     var u = c.userData;
@@ -1062,7 +1096,9 @@ var Mundo3D = (function () {
     mundo: function () { return idAtual; },
     doente: function (s) { doenteFlag = !!s; },
     surpreso: function () { if (atual && atual.cadu) { atual.cadu.userData.surpresa = 3; pular(atual.cadu, 4); } },
-    config: function (c2) { if (c2.tour !== undefined) tour = !!c2.tour; if (c2.som !== undefined) somLigado = !!c2.som; if (c2.autoApos) AUTO_APOS = c2.autoApos; },
+    debug: function () { return { cam: cam, atual: atual }; },
+    config: function (c2) {
+      if (c2.estilo && ESTILOS[c2.estilo] && c2.estilo !== estiloCadu) { estiloCadu = c2.estilo; if (atual) carregar(idAtual); } if (c2.tour !== undefined) tour = !!c2.tour; if (c2.som !== undefined) somLigado = !!c2.som; if (c2.autoApos) AUTO_APOS = c2.autoApos; },
     autoAgora: function () { ultimoToque = 0; },
     suportado: function () { try { var c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl"))); } catch (e) { return false; } }
   };
