@@ -1,27 +1,126 @@
 {
   "porta": 8765,
   "vps_url": "https://agendaelos.com.br",
-  "dormir": { "ativo": false, "de": 0, "ate": 6 },
-  "noticias": { "intervalo_min": 15 },
+  "dormir": {
+    "ativo": false,
+    "de": 0,
+    "ate": 6
+  },
+  "noticias": {
+    "intervalo_min": 15
+  },
   "chrome": {
     "ativo": true,
-    "ocultar": [],
-    "links": {
-      "Exemplo — nome do perfil": ["https://web.whatsapp.com"]
+    "_como_usar": "Em 'perfis', a chave é a pasta do perfil (ex.: Default, Profile 1). Para ver as pastas: python agente\\chrome.py",
+    "perfis": {
+      "PERFIL_PESSOAL": {
+        "nome": "Felipe pessoal",
+        "icone": "whatsapp",
+        "cor": "#25d366",
+        "links": [
+          "https://web.whatsapp.com"
+        ]
+      },
+      "PERFIL_PROFISSIONAL": {
+        "nome": "Felipe profissional",
+        "icone": "briefcase",
+        "cor": "#ffd166",
+        "links": [
+          "https://www.uol.com.br",
+          "https://www.globo.com",
+          "https://belavistadegoias.megaadmweb.com.br"
+        ]
+      }
     }
   },
   "botoes": [
-    { "id": "vscode",    "icone": "code", "rotulo": "VS Code",        "tipo": "comando", "comando": "code" },
-    { "id": "claude",    "icone": "robot-face", "rotulo": "Claude",         "tipo": "url",     "url": "https://claude.ai" },
-    { "id": "vps",       "icone": "cloud-server", "rotulo": "Status VPS",     "tipo": "status_vps" },
-    { "id": "powershell","icone": "terminal", "rotulo": "PowerShell",     "tipo": "comando", "comando": "start powershell" },
-    { "id": "downloads", "icone": "folder", "rotulo": "Downloads",      "tipo": "comando", "comando": "explorer \"%USERPROFILE%\\Downloads\"" },
-    { "id": "minimizar", "icone": "frame", "rotulo": "Minimizar tudo", "tipo": "comando", "comando": "powershell -NoProfile -Command \"(New-Object -ComObject Shell.Application).MinimizeAll()\"" },
-    { "id": "mudo",      "icone": "volume-x", "rotulo": "Mudo",           "tipo": "comando", "comando": "powershell -NoProfile -Command \"(New-Object -ComObject WScript.Shell).SendKeys([char]173)\"" },
-    { "id": "recorte",   "icone": "crop", "rotulo": "Recorte",        "tipo": "comando", "comando": "start ms-screenclip:" },
-    { "id": "notas",     "icone": "notes", "rotulo": "Bloco de notas", "tipo": "comando", "comando": "start notepad" },
-    { "id": "calc",      "icone": "calculator", "rotulo": "Calculadora",    "tipo": "comando", "comando": "start calc" },
-    { "id": "tarefas",   "icone": "cpu", "rotulo": "Tarefas",        "tipo": "comando", "comando": "start taskmgr" },
-    { "id": "bloquear",  "icone": "lock", "rotulo": "Bloquear PC",    "tipo": "comando", "comando": "rundll32.exe user32.dll,LockWorkStation" }
+    {
+      "id": "vscode",
+      "icone": "code",
+      "rotulo": "VS Code",
+      "tipo": "comando",
+      "comando": "code"
+    },
+    {
+      "id": "claude",
+      "icone": "robot-face",
+      "rotulo": "Claude",
+      "tipo": "app",
+      "caminhos": [
+        "%LOCALAPPDATA%\\AnthropicClaude\\claude.exe",
+        "%LOCALAPPDATA%\\Programs\\Claude\\Claude.exe",
+        "%LOCALAPPDATA%\\Programs\\claude-desktop\\Claude.exe"
+      ],
+      "protocolo": "claude://"
+    },
+    {
+      "id": "vps",
+      "icone": "cloud-server",
+      "rotulo": "Status VPS",
+      "tipo": "status_vps"
+    },
+    {
+      "id": "powershell",
+      "icone": "terminal",
+      "rotulo": "PowerShell",
+      "tipo": "comando",
+      "comando": "start powershell"
+    },
+    {
+      "id": "downloads",
+      "icone": "folder",
+      "rotulo": "Downloads",
+      "tipo": "comando",
+      "comando": "explorer \"%USERPROFILE%\\Downloads\""
+    },
+    {
+      "id": "minimizar",
+      "icone": "frame",
+      "rotulo": "Minimizar tudo",
+      "tipo": "comando",
+      "comando": "powershell -NoProfile -Command \"(New-Object -ComObject Shell.Application).MinimizeAll()\""
+    },
+    {
+      "id": "mudo",
+      "icone": "volume-x",
+      "rotulo": "Mudo",
+      "tipo": "comando",
+      "comando": "powershell -NoProfile -Command \"(New-Object -ComObject WScript.Shell).SendKeys([char]173)\""
+    },
+    {
+      "id": "recorte",
+      "icone": "crop",
+      "rotulo": "Recorte",
+      "tipo": "comando",
+      "comando": "start ms-screenclip:"
+    },
+    {
+      "id": "notas",
+      "icone": "notes",
+      "rotulo": "Bloco de notas",
+      "tipo": "comando",
+      "comando": "start notepad"
+    },
+    {
+      "id": "calc",
+      "icone": "calculator",
+      "rotulo": "Calculadora",
+      "tipo": "comando",
+      "comando": "start calc"
+    },
+    {
+      "id": "tarefas",
+      "icone": "cpu",
+      "rotulo": "Tarefas",
+      "tipo": "comando",
+      "comando": "start taskmgr"
+    },
+    {
+      "id": "bloquear",
+      "icone": "lock",
+      "rotulo": "Bloquear PC",
+      "tipo": "comando",
+      "comando": "rundll32.exe user32.dll,LockWorkStation"
+    }
   ]
 }

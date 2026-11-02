@@ -62,6 +62,15 @@ def icone_para(nome):
     return "google-chrome"
 
 
+def _ajuste(p, conf):
+    """Personalização do perfil no config: chave = pasta ("Profile 1"), e-mail ou nome do perfil."""
+    perfis = conf.get("perfis") or {}
+    for chave in (p["dir"], p["email"], p["nome"]):
+        if chave and chave in perfis:
+            return perfis[chave]
+    return {}
+
+
 def botoes(cfg):
     """Botões dinâmicos, um por perfil do Chrome."""
     conf = cfg.get("chrome") or {}
@@ -72,8 +81,12 @@ def botoes(cfg):
     for p in listar_perfis():
         if _sem_acento(p["nome"]) in ocultar:
             continue
-        saida.append({"id": "chrome:" + p["dir"], "rotulo": p["nome"], "icone": icone_para(p["nome"]),
-                      "cor": "#4285f4", "tipo": "chrome"})
+        aj = _ajuste(p, conf)
+        if aj.get("ocultar"):
+            continue
+        nome = aj.get("nome") or p["nome"]
+        saida.append({"id": "chrome:" + p["dir"], "rotulo": nome, "icone": aj.get("icone") or icone_para(nome),
+                      "cor": aj.get("cor") or "#4285f4", "tipo": "chrome"})
     return saida
 
 
@@ -84,9 +97,17 @@ def abrir(dir_perfil, cfg):
     exe = achar_chrome()
     if not exe:
         return False, "Chrome não encontrado neste PC."
-    nome = perfis[dir_perfil]["nome"]
-    links = ((cfg.get("chrome") or {}).get("links") or {})
-    urls = links.get(nome) or links.get(dir_perfil) or []
+    conf = cfg.get("chrome") or {}
+    aj = _ajuste(perfis[dir_perfil], conf)
+    nome = aj.get("nome") or perfis[dir_perfil]["nome"]
+    links = conf.get("links") or {}
+    urls = aj.get("links") or links.get(perfis[dir_perfil]["nome"]) or links.get(dir_perfil) or []
     urls = [u for u in urls if isinstance(u, str) and u.startswith(("http://", "https://"))]
     subprocess.Popen([exe, "--profile-directory=" + dir_perfil] + urls)
     return True, "Chrome · %s aberto." % nome
+
+
+if __name__ == "__main__":
+    # Lista os perfis do Chrome deste PC:  python chrome.py
+    for p in listar_perfis():
+        print("%-12s | %-25s | %s" % (p["dir"], p["nome"], p["email"]))

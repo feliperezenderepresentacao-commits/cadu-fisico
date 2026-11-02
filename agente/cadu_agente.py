@@ -199,6 +199,16 @@ def executar(botao, cfg):
     if tipo == "url":
         webbrowser.open(botao["url"])
         return True, botao["rotulo"] + ": aberto no navegador."
+    if tipo == "app":
+        for c in botao.get("caminhos", []):
+            c = os.path.expandvars(c)
+            if os.path.isfile(c):
+                subprocess.Popen([c])
+                return True, botao["rotulo"] + ": aberto."
+        if botao.get("protocolo") and hasattr(os, "startfile"):
+            os.startfile(botao["protocolo"])  # ex.: claude:// abre o app instalado
+            return True, botao["rotulo"] + ": aberto."
+        return False, botao["rotulo"] + ": app não encontrado neste PC."
     if tipo == "chrome":
         return chrome.abrir(botao["id"].split(":", 1)[1], cfg)
     if tipo == "status_vps":
