@@ -26,7 +26,7 @@ MODELO_VOSK = PASTA / "modelos" / "vosk-pt"
 PORTA_VOZ = 8767
 TAXA = 16000
 # como a palavra "Cadu" costuma sair na transcrição
-CHAMADOS = re.compile(r"\b(cadu|cadú|kadu|cadum|cadus|ca du|cad u|catu|cadê|cade|caju|cádu|kadú)\b")
+CHAMADOS = re.compile(r"\b(cadu|cadú|kadu|cadum|cadus|ca du|cad u|catu|cadê|cade|caju|cádu|kadú|cad|cadi|cadão|kadi|ca[dt]u\w*|ka[dt]u\w*|garu|cardo|canudo|cabo)\b")
 
 
 def sem_acento(s):
@@ -146,6 +146,8 @@ class Ouvido:
         preroll = deque(maxlen=int(2.5 * TAXA / 1024) + 1)   # ~2,5 s antes do "Cadu"
         captura, falando, silencio, desde_chamado = None, False, 0.0, 0.0
         piso = 300.0
+        nivel_soma, nivel_n, nivel_t = 0.0, 0, time.time()
+        depurar = (self.cfg_fn().get("voz") or {}).get("depurar", True)
         resto = b""
         while True:
             dados = c.recv(4096)
@@ -177,6 +179,10 @@ class Ouvido:
                         threading.Thread(target=self.entender, args=(audio,), daemon=True).start()
                     continue
                 preroll.append(bloco)
+                nivel_soma += rms; nivel_n += 1
+                if depurar and time.time() - nivel_t > 60:   # diagnóstico: o áudio está chegando?
+                    self.log("[voz] microfone: nível médio %d (fundo %d)" % (nivel_soma / max(1, nivel_n), piso))
+                    nivel_soma, nivel_n, nivel_t = 0.0, 0, time.time()
                 if self.vosk_modelo is None or self.whisper is None or self.ocupado:
                     continue
                 if rec is None:
@@ -184,6 +190,8 @@ class Ouvido:
                     rec = KaldiRecognizer(self.vosk_modelo, TAXA)
                 if rec.AcceptWaveform(bloco):
                     texto = json.loads(rec.Result()).get("text", "")
+                    if depurar and texto:
+                        self.log("[voz] vosk ouviu: %s" % texto)
                 else:
                     texto = json.loads(rec.PartialResult()).get("partial", "")
                 if texto and tem_chamado(texto):
