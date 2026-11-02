@@ -46,6 +46,24 @@
   #codigoCx { position: absolute; left: 20vw; right: 20vw; top: 8vmin; padding: 3vmin; display: none; z-index: 50; text-align: center; font-size: 3.6vmin; }
   #codigoCx.ver { display: block; } #codigoMsg { margin: 2vmin 0; color: var(--suave); }
   #codigoIn { width: 40vmin; font-size: 7vmin; letter-spacing: 2vmin; text-align: center; background: var(--fundo); color: #fff; border: var(--p) solid var(--borda); padding: 1vmin; margin-bottom: 2vmin; font-family: "Orbitron", sans-serif; }
+  /* --- status da conversa com o Claude: lateral (deitado) / topo (em pé) --- */
+  #claudeBar { position: absolute; z-index: 45; right: 2vmin; top: 50%; width: 26vw; -webkit-transform: translateY(-50%); transform: translateY(-50%);
+               padding: 2vmin 2.4vmin; display: none; pointer-events: auto; }
+  #claudeBar.ver { display: block; }
+  #claudeBar .cb-t { font-family: "Orbitron", sans-serif; font-size: 2.2vmin; letter-spacing: .12em; color: var(--suave); }
+  #claudeBar .cb-e { font-family: "Orbitron", sans-serif; font-weight: 700; font-size: 3.6vmin; margin-top: 1vmin; }
+  #claudeBar .cb-x { font-size: 3vmin; margin-top: .8vmin; line-height: 1.3; max-height: 12vmin; overflow: hidden; }
+  #claudeBar .cb-q { font-size: 2.4vmin; color: var(--suave); margin-top: .8vmin; }
+  #claudeBar.executando .cb-e { color: var(--ciano); } #claudeBar.executando { box-shadow: 0 0 0 var(--p) var(--ciano); }
+  #claudeBar.executando .cb-e:after { content: ""; display: inline-block; width: 2.4vmin; height: 2.4vmin; margin-left: 1.4vmin; background: var(--ciano);
+    -webkit-animation: cbGira 1s steps(4) infinite; animation: cbGira 1s steps(4) infinite; }
+  @-webkit-keyframes cbGira { to { -webkit-transform: rotate(360deg); } } @keyframes cbGira { to { transform: rotate(360deg); } }
+  #claudeBar.esperando .cb-e { color: var(--amarelo); } #claudeBar.esperando { box-shadow: 0 0 0 var(--p) var(--amarelo); -webkit-animation: pisca 1s steps(2) infinite; animation: pisca 1s steps(2) infinite; }
+  #claudeBar.terminou .cb-e { color: var(--verde); } #claudeBar.terminou { box-shadow: 0 0 0 var(--p) var(--verde); }
+  @media (orientation: portrait) {
+    #claudeBar { top: 1.5vmin; right: 2vmin; left: 2vmin; width: auto; -webkit-transform: none; transform: none; padding: 1.4vmin 2.4vmin; }
+    #claudeBar .cb-x { max-height: 7vmin; }
+  }
   #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Orbitron", sans-serif; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
   body.modo-3d #auto3d.ver { display: block; -webkit-animation: pisca 1.6s steps(2) infinite; animation: pisca 1.6s steps(2) infinite; }
   @-webkit-keyframes pisca { 50% { opacity: .55; } } @keyframes pisca { 50% { opacity: .55; } }
@@ -296,6 +314,7 @@
 
 <iframe id="jogoFrame" title="jogo"></iframe>
 <div id="ouvindo" class="caixa">OUVINDO…</div>
+<div id="claudeBar" class="caixa"><div class="cb-t">CONVERSA COM O CLAUDE</div><div class="cb-e" id="cbE"></div><div class="cb-x" id="cbX"></div><div class="cb-q" id="cbQ"></div></div>
 <div id="codigoCx" class="caixa"><div class="titulo" style="color:var(--amarelo)">Parear pelo código</div>
   <div id="codigoMsg"></div><input id="codigoIn" type="tel" maxlength="6" placeholder="000000">
   <div><span class="acao caixa" id="codigoOk">confirmar</span><span class="acao caixa" id="codigoOutro">outro código</span><span class="acao caixa" id="codigoSair">fechar</span></div></div>
@@ -1034,6 +1053,30 @@
   pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) { prefs = p; aplicarOlho(p.olhos || 0, false); if (listaBotoes.length) montarBotoes(listaBotoes); } aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
+  // ---- status da conversa com o Claude (executando / esperando / terminou)
+  var convSeq = -1, convEstado = null, convOculto = false;
+  var NOME_EST = { executando: "EXECUTANDO", esperando: "ESPERANDO VOCÊ", terminou: "TERMINOU ✓" };
+  function tempoDesde(t) { var m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60)); return m < 1 ? "agora" : (m < 60 ? "há " + m + " min" : "há " + Math.round(m / 60) + " h"); }
+  function lerConversa() {
+    pedir("GET", "/api/conversa", null, function (er, c) {
+      if (!er && c && c.estado) {
+        if (convSeq >= 0 && c.seq !== convSeq) {
+          convOculto = false;
+          if (c.estado === "terminou" || c.estado === "esperando") { ponte(function () { Cadu.vibrarPadrao(); }); brilho(-1); }
+        }
+        convSeq = c.seq; convEstado = c;
+        var velho = (Date.now() / 1000 - c.quando) > (c.estado === "terminou" ? 1800 : 6 * 3600);
+        var bar = $("claudeBar");
+        bar.className = "caixa " + c.estado + (!convOculto && !velho ? " ver" : "");
+        $("cbE").textContent = NOME_EST[c.estado] || c.estado.toUpperCase();
+        $("cbX").textContent = c.titulo; $("cbQ").textContent = tempoDesde(c.quando) + " · toque para esconder";
+      }
+      setTimeout(lerConversa, 5000);
+    });
+  }
+  $("claudeBar").addEventListener("click", function (ev) { ev.stopPropagation(); convOculto = true; $("claudeBar").className = "caixa"; });
+  lerConversa();
+
   // ---- bateria do celular (pilha no canto)
   function desenharPilha(nivel, carregando) {
     var cls = nivel >= 50 ? "ok" : (nivel >= 20 ? "medio" : "baixo");

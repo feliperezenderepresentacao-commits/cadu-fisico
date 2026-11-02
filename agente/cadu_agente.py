@@ -39,6 +39,7 @@ import cerebro
 from agenda import Agenda
 from voz import Ouvido
 import clima
+from conversa import Conversa
 
 PASTA = Path(__file__).resolve().parent
 WEB = PASTA.parent / "web"
@@ -317,6 +318,7 @@ def executar(botao, cfg):
 NOTICIAS = None  # definido no main()
 PET = None
 AGENDA = None    # Fase 2: agenda por voz
+CONVERSA = None  # status das conversas com o Claude (via GitHub)
 PAREAR = {"codigo": None, "ate": 0, "erros": 0}   # pareamento sem cabo (código de 6 dígitos)
 
 
@@ -423,6 +425,8 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/voz":
             ev = [e for e in AGENDA.eventos if e["seq"] > int((q.get("desde") or ["0"])[0] or 0)]
             self._json(dict(OUVIDO.estado, cerebro=cerebro.disponivel(carregar_config()), eventos=ev, seq=AGENDA.seq_ev))
+        elif u.path == "/api/conversa":
+            self._json(CONVERSA.estado if CONVERSA else {})
         elif u.path == "/api/clima":
             self._json(clima.obter(carregar_config()) or {})
         elif u.path == "/api/notas":
@@ -655,6 +659,16 @@ def main():
     threading.Thread(target=OUVIDO.servir, daemon=True).start()
     AGENDA.comando = lambda frase: dar_bom_dia(falar=False) if re.match(r"^\W*(bom dia|boa tarde|boa noite|resumo( do dia)?|me (d[aá]|fala) o resumo)\b", frase, re.I) else None
     threading.Thread(target=rodar_bom_dia, daemon=True).start()
+    global CONVERSA
+    def mudou(e):   # terminou/esperando: o celular fala e o PC avisa
+        if e["estado"] == "terminou":
+            OUVIDO.falar("Felipe, terminei: " + e["titulo"])
+            AGENDA_notificar("Claude terminou", e["titulo"])
+        elif e["estado"] == "esperando":
+            OUVIDO.falar("Felipe, estou esperando sua resposta.")
+            AGENDA_notificar("Claude espera você", e["titulo"])
+    CONVERSA = Conversa(carregar_config, log=log, ao_mudar=mudou)
+    threading.Thread(target=CONVERSA.rodar, daemon=True).start()
     log("[chrome] perfis encontrados: %s" % ", ".join("%s (%s)" % (p["nome"], p["dir"]) for p in chrome.listar_perfis()))
     log("Cadu agente rodando na porta %d — cabo e Wi-Fi (%s)  (Ctrl+C para parar)"
         % (porta, ", ".join(ips_locais()) or "sem rede"))
