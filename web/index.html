@@ -43,6 +43,9 @@
   body.modo-jogo #jogoFrame { display: block; } body.modo-jogo #mundoTela { visibility: hidden; }
   #ouvindo { position: absolute; top: 21vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--ciano); pointer-events: none; z-index: 5; }
   #ouvindo.ver { display: block; -webkit-animation: pisca 0.8s steps(2) infinite; animation: pisca 0.8s steps(2) infinite; }
+  #codigoCx { position: absolute; left: 20vw; right: 20vw; top: 8vmin; padding: 3vmin; display: none; z-index: 50; text-align: center; font-size: 3.6vmin; }
+  #codigoCx.ver { display: block; } #codigoMsg { margin: 2vmin 0; color: var(--suave); }
+  #codigoIn { width: 40vmin; font-size: 7vmin; letter-spacing: 2vmin; text-align: center; background: var(--fundo); color: #fff; border: var(--p) solid var(--borda); padding: 1vmin; margin-bottom: 2vmin; font-family: "Silkscreen", monospace; }
   #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
   body.modo-3d #auto3d.ver { display: block; -webkit-animation: pisca 1.6s steps(2) infinite; animation: pisca 1.6s steps(2) infinite; }
   @-webkit-keyframes pisca { 50% { opacity: .55; } } @keyframes pisca { 50% { opacity: .55; } }
@@ -205,6 +208,9 @@
 
 <iframe id="jogoFrame" title="jogo"></iframe>
 <div id="ouvindo" class="caixa">OUVINDO…</div>
+<div id="codigoCx" class="caixa"><div class="titulo" style="color:var(--amarelo)">Parear pelo código</div>
+  <div id="codigoMsg"></div><input id="codigoIn" type="tel" maxlength="6" placeholder="000000">
+  <div><span class="acao caixa" id="codigoOk">confirmar</span><span class="acao caixa" id="codigoOutro">outro código</span><span class="acao caixa" id="codigoSair">fechar</span></div></div>
 
 <div id="rosto"><div id="olhos"><div class="olho e"></div><div class="olho d"></div></div></div>
 
@@ -609,7 +615,8 @@
     itemAjuste(L, "Wi-Fi do celular", rede ? (!rede.wifiLigado ? "desligado" : (rede.rede ? rede.rede + " · " + rede.ip : "ligado, sem rede")) : "—", [
       { texto: "abrir", icone: "wifi", fn: function () { ponte(function () { Cadu.abrirWifi(); }); } }]);
     itemAjuste(L, "Conexão com o PC", (T ? "pelo Wi-Fi" : "pelo cabo") + (rede ? (rede.pareado ? " · pareado" : " · não pareado") : ""), [
-      { texto: "re-parear", icone: "reload", fn: function (s) { ponte(function () { Cadu.esquecerPareamento(); }); parearSeNoCabo(); s.textContent = T ? "conecte o cabo para parear" : "pareado de novo"; } }]);
+      { texto: "código", icone: "lock", fn: function (s) { abrirCodigo(s); } },
+      { texto: "re-parear", icone: "reload", fn: function (s) { ponte(function () { Cadu.esquecerPareamento(); }); parearSeNoCabo(); s.textContent = T ? "use \"código\" para parear pelo Wi-Fi" : "pareado de novo"; } }]);
     var sApk = itemAjuste(L, "Atualizar app", "verificando…", [
       { texto: "atualizar", icone: "download", fn: function (s) {
         var ok = ponte(function () { return Cadu.atualizarApp(location.origin + "/apk" + (T ? "?t=" + T : "")); });
@@ -629,6 +636,19 @@
     if (m3d) Mundo3D.config(d);
     montarAjustes();
   }
+  // pareamento sem cabo: o PC mostra 6 números numa notificação, você digita aqui
+  function abrirCodigo(sub) {
+    var ok = ponte(function () { Cadu.pedirCodigo(); return true; });
+    if (!ok) { sub.textContent = "este app ainda não tem pareamento por código"; return; }
+    var cx = $("codigoCx"); cx.className = "caixa ver"; $("codigoIn").value = ""; $("codigoMsg").textContent = "Procurando o PC…";
+    window.aoParear = function (tipo, m) {
+      $("codigoMsg").textContent = m;
+      if (tipo === "ok") { sub.textContent = "pareado pelo Wi-Fi"; setTimeout(function () { cx.className = "caixa"; }, 1500); }
+    };
+  }
+  $("codigoOk").addEventListener("click", function (e) { e.stopPropagation(); $("codigoMsg").textContent = "Conferindo…"; ponte(function () { Cadu.enviarCodigo($("codigoIn").value); }); });
+  $("codigoOutro").addEventListener("click", function (e) { e.stopPropagation(); $("codigoMsg").textContent = "Procurando o PC…"; ponte(function () { Cadu.pedirCodigo(); }); });
+  $("codigoSair").addEventListener("click", function (e) { e.stopPropagation(); $("codigoCx").className = "caixa"; });
   function trocarModo(m) {
     pedir("POST", "/api/prefs", { tela: m }, function () {});
     aplicarModo(m); ligarMundos(false); montarAjustes(); msg.textContent = "Tela de descanso: " + ({ mundo3d: "5 mundos 3D", mundo: "quarto pixel", olhos: "olhos" }[m]) + ".";
