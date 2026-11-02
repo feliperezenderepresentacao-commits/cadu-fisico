@@ -133,7 +133,7 @@
            color: var(--amarelo); letter-spacing: .2em; opacity: 0; -webkit-transition: opacity .4s; transition: opacity .4s; pointer-events: none; }
   #rNome.ver { opacity: 1; }
   body.eco #rTopo, body.eco #rPilha { opacity: .55; }
-  #olhos { top: 58%; }
+  #olhos { top: 50%; }
 
   /* --- pilha (bateria) --- */
   .pilhaCx { display: -webkit-inline-flex; display: inline-flex; -webkit-align-items: center; align-items: center; font-family: "Oxanium", sans-serif; font-size: 3vmin; color: var(--texto); }
@@ -195,12 +195,10 @@
   #rodape .dica-arr, #alerta .dica-arr { display: block; font-size: 2.4vmin; color: var(--suave); margin-top: 1vmin; }
   /* com cartões na tela, os olhos encolhem e vão para a direita; o relógio também abre espaço */
   #olhosCx { position: absolute; top: 0; left: 0; right: 0; bottom: 0; -webkit-transition: -webkit-transform .4s ease; transition: transform .4s ease; pointer-events: none; }
-  body.com-notif #olhosCx { -webkit-transform: translateX(13vw) scale(.62); transform: translateX(13vw) scale(.62); }
   body.com-notif #rTopo { left: 34vw; right: 28vw; -webkit-transition: left .4s, right .4s; transition: left .4s, right .4s; }
   body.com-notif #rHora { font-size: 10vmin; }
   body.modo-olhos #claudeBar { top: 14vmin; }
   @media (orientation: portrait) {
-    body.com-notif #olhosCx { -webkit-transform: translateY(14vh) scale(.7); transform: translateY(14vh) scale(.7); }
     body.com-notif #rTopo { left: 0; top: 48vh; }
       body.modo-olhos #claudeBar { top: 1.5vmin; }
   }
@@ -303,8 +301,6 @@
   /* ================= VERTICAL ================= */
   @media (orientation: portrait) {
     #nomeMundo { top: 30vmin; } #auto3d { top: 30vmin; } #ouvindo { top: 36vmin; }
-    #olhos { width: 84vmin; height: 40vmin; margin-left: -42vmin; margin-top: -20vmin; }
-    .olho { width: 30vmin; height: 40vmin; border-radius: 12vmin; } .olho.e { left: 6vmin; } .olho.d { right: 6vmin; }
     .btn { width: 33.333%; height: 25%; } .item { width: 100%; }
     .aba { margin: 0 1vmin; font-size: 2.8vmin; } #direita { display: none; }
   }
@@ -321,20 +317,15 @@
   #claudeBar { top: 30vmin; }
   /* olhos deitado: coluna da esquerda inteira; conversa à direita */
   body.modo-olhos #pilhaNotif { top: 3vmin; bottom: 3vmin; }
-  body.modo-olhos #olhos { top: 64%; }
   body.modo-olhos #claudeBar { top: 14vmin; }
-  body.com-notif #olhosCx { -webkit-transform: translateX(5.5vw) scale(.55); transform: translateX(5.5vw) scale(.55); }
   body.com-notif #rTopo { left: 37vw; right: 27vw; }
   body.com-notif #rHora { font-size: 9vmin; }
   body.com-notif #rClima { font-size: 3vmin; }
   @media (orientation: portrait) {
     /* em pé: uma coluna só (a conversa entra na pilha), abaixo do painel do Cadu e acima dos botões */
     #pilhaNotif { left: 3vmin; right: 3vmin; width: auto; top: 44vmin; bottom: 24vmin; }
-    #olhosCx { -webkit-transform: scale(.8); transform: scale(.8); }
-    body.modo-olhos #olhos { top: 50%; }
     body.modo-olhos #pilhaNotif { top: auto; bottom: 3vmin; max-height: 52vh; -webkit-flex-direction: column-reverse; flex-direction: column-reverse; }
     body.modo-olhos #pilhaNotif > * { margin-bottom: 0; margin-top: 2.5vmin; }
-    body.com-notif #olhosCx { -webkit-transform: translateY(-20vh) scale(.45); transform: translateY(-20vh) scale(.45); }
     body.com-notif #rTopo { left: 0; right: 0; top: 5vmin; }
     body.com-notif #rHora { font-size: 12vmin; }
   }
@@ -632,6 +623,28 @@
       pedir("POST", "/api/prefs", { olhos: estiloOlho }, function () {}); prefs.olhos = estiloOlho;
     }
   }
+  function ajustarOlhos() {
+    if (modoTela !== "olhos") return;
+    var W = window.innerWidth, H = window.innerHeight, m = W * 0.03, o = $("olhos"), cx = $("olhosCx");
+    var topo = $("rTopo").getBoundingClientRect().bottom + m, baixo = H - m, esq = m, dir = W - m;
+    var emPe = H > W, pilha = $("pilhaNotif"), cb = $("claudeBar");
+    var filhos = pilha.children, minTop = H, maxDir = 0, algum = false;
+    for (var i = 0; i < filhos.length; i++) {
+      var r = filhos[i].getBoundingClientRect(); if (!r.height) continue;
+      algum = true; if (r.top < minTop) minTop = r.top; if (r.right > maxDir) maxDir = r.right;
+    }
+    if (algum) { if (emPe) baixo = Math.min(baixo, minTop - m); else esq = Math.max(esq, maxDir + m); }
+    if (!emPe && cb.className.indexOf("ver") >= 0 && cb.parentNode !== pilha) {
+      var rc = cb.getBoundingClientRect(); dir = Math.min(dir, rc.left - m);
+    }
+    var w = o.offsetWidth, h = o.offsetHeight;
+    var s = Math.max(0.25, Math.min(1, (dir - esq) / w, (baixo - topo) / h));
+    var dx = (esq + dir) / 2 - W / 2, dy = (topo + baixo) / 2 - H / 2;
+    cx.style.webkitTransform = cx.style.transform = "translate(" + Math.round(dx) + "px," + Math.round(dy) + "px) scale(" + s.toFixed(3) + ")";
+  }
+  window.addEventListener("resize", function () { setTimeout(ajustarOlhos, 120); });
+  setInterval(ajustarOlhos, 1500);
+
   rosto.addEventListener("touchstart", function (e) { var t = e.touches[0]; toqueRosto = { x: t.clientX, y: t.clientY }; }, false);
   rosto.addEventListener("touchend", function (e) {
     if (!toqueRosto) return;
@@ -660,6 +673,7 @@
       return;
     }
     document.body.className = (modoTela === "olhos" ? "modo-olhos" : "") + alerta;
+    if (modoTela === "olhos") setTimeout(ajustarOlhos, 60);
     if (m3d) Mundo3D.ativo(false);
     Mundo.ativo(modoTela === "mundo" && !painel.className);
     if (modoTela === "mundo") montarFerramentas([{ id: "comer" }, { id: "brincar" }, { id: "luz" }, { id: "menu" }]);
@@ -1048,6 +1062,7 @@
   function notifVisivel() {
     var algum = rodape.className.indexOf("ver") >= 0 || alerta.className.indexOf("ver") >= 0 || $("claudeBar").className.indexOf("ver") >= 0;
     document.body.className = document.body.className.replace(/ ?com-notif/g, "") + (algum ? " com-notif" : "");
+    setTimeout(ajustarOlhos, 60);
   }
   // arrastar para o lado ou para cima tira o cartão da tela (igual às notificações do Android)
   function arrastavel(cartao, tirar) {

@@ -3,8 +3,8 @@ Status das conversas com o Claude no celular — todas as conversas, não só um
 
 Cada conversa grava um arquivo no ramo "status" do repositório no GitHub:
     sessoes/<nome-da-conversa>.json  →  {"estado": "executando"|"esperando"|"terminou", "titulo": "...", "quando": epoch}
-(o script scripts/claude-status.sh faz isso). Este módulo lista a pasta a cada 15 s com ETag
-(respostas 304 não gastam o limite da API do GitHub) e só baixa os arquivos que mudaram.
+(o script scripts/claude-status.sh faz isso). A cada 10 s este módulo olha o SHA do ramo pelo protocolo
+do git (sem o limite de 60 chamadas/hora da API) e só quando muda lista a pasta e baixa os arquivos.
 """
 import json
 import time
@@ -19,8 +19,9 @@ PRIORIDADE = {"esperando": 0, "executando": 1, "terminou": 2}
 class Conversa:
     def __init__(self, cfg_fn, log=print, ao_mudar=None):
         self.cfg_fn, self.log, self.ao_mudar = cfg_fn, log, ao_mudar
-        self.sessoes = {}          # nome -> {estado, titulo, quando, sha}
-        self.etag = None
+        self.sessoes = {}          # nome -> {estado, titulo, quando}
+        self.sha = None
+        self.erro = ""
         self.seq = 0
         self.ok = False
         self.estado = self._resumo()
@@ -44,35 +45,60 @@ class Conversa:
         lista = sorted(({"nome": n, **{k: v for k, v in d.items() if k != "sha"}} for n, d in self.sessoes.items()),
                        key=lambda s: (PRIORIDADE.get(s["estado"], 3), -s.get("quando", 0)))
         principal = lista[0] if lista else {"estado": "", "titulo": "", "quando": 0, "nome": ""}
-        return dict(principal, seq=self.seq, ok=self.ok, sessoes=lista[:6])
+        return dict(principal, seq=self.seq, ok=self.ok, erro=getattr(self, "erro", ""), sessoes=lista[:6])
+
+    def _sha_ramo(self, repo):
+        """SHA atual do ramo "status" pelo protocolo do git (não tem o limite de 60/h da API do GitHub)."""
+        req = urllib.request.Request("https://github.com/%s.git/info/refs?service=git-upload-pack" % repo,
+                                     headers={"User-Agent": "git/2.40 (cadu-fisico)"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            for linha in r.read().split(b"\n"):
+                if linha.endswith(b" refs/heads/status"):
+                    return linha[4:44].decode()
+        return None
+
+    def _bruto(self, repo, sha, nome):
+        """Arquivo exato daquele commit (endereço com o SHA não fica velho em cache)."""
+        url = "https://raw.githubusercontent.com/%s/%s/sessoes/%s" % (repo, sha, nome)
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "cadu-fisico"}), timeout=10) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
 
     def _atualizar(self):
         repo = self.cfg_fn().get("status_github") or REPO
-        etag, itens = self._get(API % (repo, "sessoes"), self.etag)
+        sha = self._sha_ramo(repo)
         self.ok = True
-        if itens is None:
+        if not sha or sha == self.sha:
             return []          # nada mudou
-        self.etag = etag
-        mudadas = []
-        vistos = set()
-        for it in itens:
-            if not it.get("name", "").endswith(".json"):
-                continue
-            nome = it["name"][:-5]
-            vistos.add(nome)
-            if self.sessoes.get(nome, {}).get("sha") == it.get("sha"):
-                continue
-            _, d = self._get(API % (repo, "sessoes/" + it["name"]), raw=True)
+        # lista a pasta (só quando o ramo mudou: poucas chamadas por hora). Se a API recusar, relê as conhecidas.
+        try:
+            _, itens = self._get((API % (repo, "sessoes")).replace("ref=status", "ref=" + sha))
+            nomes = [it["name"] for it in itens if it.get("name", "").endswith(".json")]
+        except Exception as e:
+            self.log("[conversa] API do GitHub recusou a lista (%s); relendo as conversas conhecidas" % e)
+            nomes = [n + ".json" for n in self.sessoes]
+            itens = None
+        mudadas, vistos = [], set()
+        for arq in nomes:
+            nome = arq[:-5]
+            d = self._bruto(repo, sha, arq)
             if not isinstance(d, dict):
                 continue
+            vistos.add(nome)
+            novo = {"estado": d.get("estado", ""), "titulo": str(d.get("titulo", ""))[:120], "quando": d.get("quando", 0)}
             antes = self.sessoes.get(nome)
-            self.sessoes[nome] = {"estado": d.get("estado", ""), "titulo": str(d.get("titulo", ""))[:120],
-                                  "quando": d.get("quando", 0), "sha": it.get("sha")}
-            if antes is not None or self.seq > 0:
-                mudadas.append(dict(self.sessoes[nome], nome=nome))
-        for nome in list(self.sessoes):
-            if nome not in vistos:
-                self.sessoes.pop(nome)
+            self.sessoes[nome] = novo
+            if antes != novo and (antes is not None or self.seq > 0):
+                mudadas.append(dict(novo, nome=nome))
+        if itens is not None:
+            for nome in list(self.sessoes):
+                if nome not in vistos:
+                    self.sessoes.pop(nome)
+        self.sha = sha
         return mudadas
 
     def rodar(self):
@@ -86,7 +112,10 @@ class Conversa:
                     self.log("[conversa] %s · %s: %s" % (m["nome"], m["estado"], m["titulo"]))
                     if self.ao_mudar:
                         self.ao_mudar(m)
-            except Exception:
-                self.ok = False
+                self.erro = ""
+            except Exception as e:
+                if not self.erro:
+                    self.log("[conversa] não consegui ler o status no GitHub: %s" % e)
+                self.ok, self.erro = False, str(e)[:120]
             self.estado = self._resumo()
-            time.sleep(15)
+            time.sleep(10)
