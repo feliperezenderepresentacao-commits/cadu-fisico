@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String versao() {
-            return "0.1-fase1";
+            return "0.2-horizontal";
         }
 
         @JavascriptInterface

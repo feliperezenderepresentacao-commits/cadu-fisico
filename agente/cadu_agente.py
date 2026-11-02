@@ -14,6 +14,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -45,7 +46,8 @@ def achar_adb():
 
 
 def manter_tunel_usb(porta):
-    """A cada 10 s garante 'adb reverse' (o J3 acessa 127.0.0.1:porta = este PC)."""
+    """A cada 3 s garante 'adb reverse' (o J3 acessa 127.0.0.1:porta = este PC).
+    É isso que faz o Cadu "acordar" sozinho quando o cabo é conectado."""
     adb = achar_adb()
     if not adb:
         print("[aviso] adb não encontrado — rode 'adb reverse tcp:%d tcp:%d' manualmente." % (porta, porta))
@@ -60,9 +62,9 @@ def manter_tunel_usb(porta):
         except Exception:
             estado = "sem celular"
         if estado != ultimo:
-            print("[usb] J3 %s" % estado)
+            print("[usb] %s J3 %s" % (time.strftime("%H:%M:%S"), estado))
             ultimo = estado
-        time.sleep(10)
+        time.sleep(3)  # cabo conectado -> Cadu acorda em poucos segundos
 
 
 # ---------------------------------------------------------------- status VPS
@@ -139,7 +141,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(corpo)
         elif self.path == "/api/botoes":
             # Só o que a tela precisa; os comandos ficam no PC.
-            self._json([{k: b.get(k) for k in ("id", "icone", "rotulo")} for b in cfg["botoes"]])
+            self._json([{k: b.get(k) for k in ("id", "icone", "rotulo", "cor")} for b in cfg["botoes"]])
         elif self.path == "/api/status":
             self._json({"hora": time.strftime("%H:%M"),
                         "vps": checar_vps(cfg.get("vps_url")),
@@ -167,11 +169,25 @@ class Handler(BaseHTTPRequestHandler):
         pass  # silencioso; só as ações aparecem no console
 
 
+def preparar_log():
+    """Rodando escondido (pythonw) não há console: grava tudo em agente/cadu.log."""
+    if sys.stdout is None or not sys.stdout.isatty():
+        log = open(PASTA / "cadu.log", "a", encoding="utf-8", buffering=1)
+        sys.stdout = sys.stderr = log
+        print("\n=== %s — agente iniciado ===" % time.strftime("%d/%m/%Y %H:%M:%S"))
+
+
 def main():
+    preparar_log()
     cfg = carregar_config()
     porta = int(cfg.get("porta", 8765))
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", porta), Handler)
+    except OSError:
+        # Porta ocupada = o agente já está rodando (ex.: iniciou com o Windows). Sai quieto.
+        print("Agente já está rodando na porta %d." % porta)
+        return
     threading.Thread(target=manter_tunel_usb, args=(porta,), daemon=True).start()
-    srv = ThreadingHTTPServer(("127.0.0.1", porta), Handler)
     print("Cadu agente rodando em http://127.0.0.1:%d  (Ctrl+C para parar)" % porta)
     try:
         srv.serve_forever()

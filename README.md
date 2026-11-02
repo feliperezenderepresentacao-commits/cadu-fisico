@@ -15,6 +15,11 @@ Galaxy J3 (SM-J320M, Android 5.1) transformado em companheiro de mesa: rosto com
 3. `powershell -ExecutionPolicy Bypass -File iniciar.ps1`
 4. Toque no rosto → botões. 20 s sem uso → volta ao rosto.
 
+### Ligar sozinho
+`powershell -ExecutionPolicy Bypass -File ativar-inicio-automatico.ps1` — o agente passa a iniciar escondido com o Windows;
+ao conectar o cabo do J3, o Cadu acorda em ~3 s. Registro em `agente/cadu.log`.
+Para desfazer: `desativar-inicio-automatico.ps1`.
+
 ## Personalizar
 Edite `agente/config.json`: `vps_url` (status da VPS) e a lista `botoes`
 (tipos: `comando`, `url`, `status_vps`). Reinicie o agente.
