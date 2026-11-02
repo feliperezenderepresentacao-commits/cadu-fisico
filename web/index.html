@@ -184,7 +184,7 @@
   #rosto.piscar #olhos.e6 .olho { -webkit-transform: rotate(-45deg); transform: rotate(-45deg); }
 
   /* ================= AVISOS ================= */
-  #aviso { position: absolute; bottom: 17vmin; width: 100%; text-align: center; font-size: 4vmin; color: var(--suave); pointer-events: none; }
+  #aviso { position: absolute; bottom: 23vmin; width: 100%; text-align: center; font-size: 4vmin; color: var(--suave); pointer-events: none; }
   #aviso.alerta { color: var(--rosa); }
   /* notificações em cartões no canto esquerdo (deitado) / no topo (em pé); arrastar para o lado ou para cima tira da tela */
   #rodape { position: absolute; z-index: 44; left: 3vmin; top: 22vmin; width: 32vw; padding: 2.2vmin 2.8vmin; font-size: 3.4vmin; line-height: 1.3;
@@ -340,6 +340,8 @@
   }
   /* menu aberto: o aviso de conversa e o rodapé saem da frente (alarme continua aparecendo) */
   body.com-painel #claudeBar, body.com-painel #pilhaNotif #rodape { display: none !important; }
+  /* AUTO e OUVINDO entram no fluxo do canto direito (abaixo de relógio/clima/bateria): nunca se sobrepõem */
+  #hudDir #auto3d { position: static; margin: 1vmin 0 0 auto; width: -webkit-max-content; width: max-content; }
 </style>
 </head>
 <body>
@@ -1225,6 +1227,18 @@
     if (!emPe && cb.parentNode === pilha) document.body.appendChild(cb);
   }
   posicionarConversa(); window.addEventListener("resize", posicionarConversa);
+  $("hudDir").appendChild($("auto3d"));
+  // OUVINDO fica fora (aparece também nos olhos/jogo), mas desce para baixo de relógio/clima/bateria quando eles aparecem
+  setInterval(function () {
+    var h = $("hudDir"), o = $("ouvindo"), r = h.getBoundingClientRect();
+    var vis = h.offsetParent && r.height, vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
+    o.style.top = vis ? Math.round(r.bottom + vmin * 1.5) + "px" : "";
+    // conversa do Claude (deitado, fora da pilha): começa abaixo de tudo do canto direito
+    var cb = $("claudeBar"), fundo = r.bottom;
+    if (o.className.indexOf("ver") >= 0) fundo = Math.max(fundo, o.getBoundingClientRect().bottom);
+    var fora = cb.parentNode !== $("pilhaNotif");
+    cb.style.top = (vis && fora && fundo + vmin * 2 > vmin * 30) ? Math.round(fundo + vmin * 2) + "px" : "";
+  }, 700);
   function esconderConversa() { convOculto = true; $("claudeBar").className = "caixa"; $("claudeBar").style.webkitTransform = $("claudeBar").style.transform = ""; notifVisivel(); }
   $("claudeBar").addEventListener("click", function (ev) { ev.stopPropagation(); if (Date.now() < semCliqueCartao) return; esconderConversa(); });
   lerConversa();
