@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Cadu</title>
+<!--
+  Interface do Cadu físico (Fase 1).
+  Servida pelo agente do PC (agente/cadu_agente.py) e mostrada em tela cheia no J3.
+  JS em ES5 de propósito: roda no WebView antigo do Android 5.1.
+-->
+<style>
+  :root { --olho: #8fe3ff; --fundo: #000; --texto: #cfeffa; --apagado: #2c4a53; --painel: #0b1417; --botao: #12232a; --ok: #6fe3a1; --erro: #ff6b6b; }
+  html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--texto); overflow: hidden;
+               font-family: sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+  /* ---------- ROSTO ---------- */
+  #rosto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+  #olhos { position: absolute; left: 50%; top: 46%; width: 76vw; height: 30vw; margin-left: -38vw; margin-top: -15vw;
+           -webkit-transition: -webkit-transform .5s ease; transition: transform .5s ease; }
+  .olho { position: absolute; top: 0; width: 24vw; height: 30vw; background: var(--olho); border-radius: 9vw;
+          overflow: hidden; box-shadow: 0 0 6vw rgba(143,227,255,.35);
+          -webkit-transition: -webkit-transform .12s ease, height .3s, border-radius .3s, background .3s;
+          transition: transform .12s ease, height .3s, border-radius .3s, background .3s; }
+  .olho.e { left: 6vw; }
+  .olho.d { right: 6vw; }
+  /* tampa de cima (sobrancelha brava) e de baixo (olho sorrindo) */
+  .olho:before, .olho:after { content: ""; position: absolute; left: -10%; width: 120%; height: 100%; background: var(--fundo);
+          -webkit-transition: -webkit-transform .3s ease; transition: transform .3s ease; }
+  .olho:before { top: -100%; }
+  .olho:after  { top: 100%; border-radius: 50% 50% 0 0; }
+
+  #rosto.piscar .olho { -webkit-transform: scaleY(.08); transform: scaleY(.08); }
+  #rosto.feliz .olho:after { -webkit-transform: translateY(-45%); transform: translateY(-45%); }
+  #rosto.bravo .olho.e:before { -webkit-transform: translateY(42%) rotate(18deg); transform: translateY(42%) rotate(18deg); }
+  #rosto.bravo .olho.d:before { -webkit-transform: translateY(42%) rotate(-18deg); transform: translateY(42%) rotate(-18deg); }
+  #rosto.bravo .olho { background: #ff9a8f; box-shadow: 0 0 6vw rgba(255,120,110,.35); }
+  #rosto.sono .olho { -webkit-transform: scaleY(.12); transform: scaleY(.12); background: var(--apagado); box-shadow: none; }
+
+  #aviso { position: absolute; bottom: 10vh; width: 100%; text-align: center; font-size: 4.5vw; letter-spacing: .04em; color: var(--apagado); }
+  #aviso.alerta { color: var(--erro); }
+
+  /* ---------- PAINEL DE BOTÕES ---------- */
+  #painel { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--painel); display: none; padding: 4vw; box-sizing: border-box; }
+  #painel.aberto { display: block; }
+  #topo { height: 12vw; line-height: 12vw; font-size: 5vw; position: relative; }
+  #hora { font-size: 7vw; font-weight: bold; letter-spacing: .02em; }
+  #vps { position: absolute; right: 0; top: 0; font-size: 3.8vw; }
+  .ponto { display: inline-block; width: 2.6vw; height: 2.6vw; border-radius: 50%; margin-right: 1.5vw; background: var(--apagado); vertical-align: middle; }
+  .ponto.ok { background: var(--ok); } .ponto.erro { background: var(--erro); }
+  #grade { margin-top: 4vw; }
+  .btn { float: left; width: 28.6vw; height: 30vw; margin: 0 2.4vw 2.4vw 0; background: var(--botao); border-radius: 4vw;
+         text-align: center; box-sizing: border-box; padding-top: 4.5vw; position: relative;
+         -webkit-transition: -webkit-transform .08s, background .2s; transition: transform .08s, background .2s; }
+  .btn:nth-child(3n) { margin-right: 0; }
+  .btn .ic { font-size: 10vw; line-height: 12vw; display: block; }
+  .btn .rot { font-size: 3.6vw; display: block; margin-top: 2vw; padding: 0 2vw; color: var(--texto); }
+  .btn.apertado { -webkit-transform: scale(.94); transform: scale(.94); }
+  .btn.ok { background: #13402b; } .btn.erro { background: #4a1717; }
+  #msg { position: absolute; left: 4vw; right: 4vw; bottom: 4vw; text-align: center; font-size: 4vw; min-height: 6vw; color: var(--texto); }
+</style>
+</head>
+<body>
+
+<div id="rosto">
+  <div id="olhos"><div class="olho e"></div><div class="olho d"></div></div>
+  <div id="aviso"></div>
+</div>
+
+<div id="painel">
+  <div id="topo"><span id="hora">--:--</span><span id="vps"><span class="ponto"></span>VPS</span></div>
+  <div id="grade"></div>
+  <div id="msg"></div>
+</div>
+
+<script>
+(function () {
+  var rosto = document.getElementById("rosto"),
+      olhos = document.getElementById("olhos"),
+      aviso = document.getElementById("aviso"),
+      painel = document.getElementById("painel"),
+      grade = document.getElementById("grade"),
+      msg = document.getElementById("msg");
+
+  var humorBase = "",          // "", "bravo" (VPS fora) ou "sono" (madrugada)
+      humorTemp = null,        // humor passageiro (ex.: feliz ao tocar)
+      timerOcioso = null,
+      OCIOSO_MS = 20000;
+
+  // ---------- utilidades ----------
+  function vibrar(ms) { try { if (window.Cadu) Cadu.vibrar(ms); } catch (e) {} }
+  function pedir(metodo, url, corpo, cb) {
+    var x = new XMLHttpRequest();
+    x.open(metodo, url, true);
+    x.timeout = 15000;
+    x.setRequestHeader("Content-Type", "application/json");
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) return;
+      var dados = null;
+      try { dados = JSON.parse(x.responseText); } catch (e) {}
+      cb(x.status === 200 && dados ? null : (x.status || "sem resposta"), dados);
+    };
+    x.send(corpo ? JSON.stringify(corpo) : null);
+  }
+  function aleatorio(a, b) { return a + Math.random() * (b - a); }
+
+  // ---------- rosto ----------
+  function aplicarHumor() {
+    var h = humorTemp || humorBase;
+    rosto.className = h;
+  }
+  function humorPassageiro(h, ms) {
+    humorTemp = h; aplicarHumor();
+    setTimeout(function () { humorTemp = null; aplicarHumor(); }, ms);
+  }
+  function piscar() {
+    if (humorBase !== "sono" && !humorTemp) {
+      rosto.className = (humorBase ? humorBase + " " : "") + "piscar";
+      setTimeout(aplicarHumor, 130);
+      if (Math.random() < .25) setTimeout(function () {             // às vezes pisca duas vezes
+        rosto.className = (humorBase ? humorBase + " " : "") + "piscar";
+        setTimeout(aplicarHumor, 130);
+      }, 260);
+    }
+    setTimeout(piscar, aleatorio(2200, 6000));
+  }
+  function olharEmVolta() {
+    var x = 0, y = 0;
+    if (Math.random() < .7) { x = Math.round(aleatorio(-9, 9)); y = Math.round(aleatorio(-5, 5)); }
+    var t = "translate(" + x + "vw," + y + "vw)";
+    olhos.style.webkitTransform = t; olhos.style.transform = t;
+    setTimeout(olharEmVolta, aleatorio(1500, 4500));
+  }
+
+  // ---------- painel ----------
+  function abrirPainel() {
+    humorPassageiro("feliz", 500);
+    vibrar(25);
+    setTimeout(function () { painel.className = "aberto"; reiniciarOcioso(); }, 250);
+  }
+  function fecharPainel() { painel.className = ""; msg.innerHTML = ""; }
+  function reiniciarOcioso() {
+    clearTimeout(timerOcioso);
+    timerOcioso = setTimeout(fecharPainel, OCIOSO_MS);
+  }
+  window.aoVoltar = function () { if (painel.className) fecharPainel(); };
+
+  function montarBotoes(lista) {
+    grade.innerHTML = "";
+    for (var i = 0; i < lista.length; i++) (function (b) {
+      var el = document.createElement("div");
+      el.className = "btn";
+      el.innerHTML = '<span class="ic"></span><span class="rot"></span>';
+      el.firstChild.textContent = b.icone || "•";
+      el.lastChild.textContent = b.rotulo || b.id;
+      el.addEventListener("click", function (ev) { ev.stopPropagation(); acionar(b, el); });
+      grade.appendChild(el);
+    })(lista[i]);
+  }
+  function acionar(b, el) {
+    reiniciarOcioso();
+    vibrar(30);
+    el.className = "btn apertado";
+    msg.textContent = b.rotulo + "…";
+    pedir("POST", "/api/acao", { id: b.id }, function (erro, r) {
+      var ok = !erro && r && r.ok;
+      el.className = "btn " + (ok ? "ok" : "erro");
+      msg.textContent = (r && r.msg) || (ok ? "Feito." : "Falhou (" + erro + ")");
+      if (!ok) vibrar(200);
+      setTimeout(function () { el.className = "btn"; }, 900);
+    });
+  }
+
+  // ---------- status (relógio + VPS) ----------
+  function relogio() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    document.getElementById("hora").textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+    setTimeout(relogio, 10000);
+  }
+  function status() {
+    pedir("GET", "/api/status", null, function (erro, r) {
+      var vps = r && r.vps, ponto = document.querySelector("#vps .ponto");
+      if (erro || !r) {                          // agente sumiu: recarrega (cai na tela offline)
+        try { if (window.Cadu) Cadu.recarregar(); } catch (e) {}
+      } else if (vps && vps.ok === false) {
+        humorBase = "bravo"; aviso.textContent = "VPS fora do ar!"; aviso.className = "alerta"; ponto.className = "ponto erro";
+      } else {
+        humorBase = r.dormir ? "sono" : "";
+        aviso.textContent = r.dormir ? "zzz" : ""; aviso.className = "";
+        ponto.className = "ponto" + (vps ? " ok" : "");
+      }
+      aplicarHumor();
+      setTimeout(status, 30000);
+    });
+  }
+
+  // ---------- início ----------
+  rosto.addEventListener("click", abrirPainel);
+  painel.addEventListener("click", reiniciarOcioso);
+  pedir("GET", "/api/botoes", null, function (erro, lista) {
+    if (!erro && lista) montarBotoes(lista);
+  });
+  relogio(); status(); piscar(); olharEmVolta();
+})();
+</script>
+</body>
+</html>

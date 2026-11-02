@@ -1,0 +1,27 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "br.cadu.fisico"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "br.cadu.fisico"
+        minSdk 21          // J3 2016 roda Android 5.1 (API 22)
+        targetSdk 34
+        versionCode 1
+        versionName "0.1-fase1"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
