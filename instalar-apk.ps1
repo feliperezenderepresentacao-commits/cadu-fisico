@@ -14,7 +14,7 @@ Write-Host $saida
 if ($saida -notmatch "Success") {
     # Versao antiga com outra assinatura: remove e instala limpo (o pareamento refaz sozinho no cabo).
     Write-Host "Atualizacao recusada pelo Android. Removendo a versao antiga e instalando de novo..." -ForegroundColor Yellow
-    & $adb uninstall br.cadu.fisico | Out-Null
+    & $adb uninstall br.cadu.fisico.voz | Out-Null
     $saida = (& $adb install $Apk 2>&1 | Out-String)
     Write-Host $saida
     if ($saida -notmatch "Success") { Write-Host "FALHOU a instalacao. Mande esta tela para o Cadu." -ForegroundColor Red; exit 1 }
