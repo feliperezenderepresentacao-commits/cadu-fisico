@@ -101,6 +101,7 @@ class Ouvido:
             partes = cab.decode("utf-8", "ignore").split()
             local = end[0] in ("127.0.0.1", "::1")
             if len(partes) < 2 or partes[0] != "CADU-AUDIO" or not (local or secrets.compare_digest(partes[1], self.token)):
+                self.log("[voz] celular %s recusado (token errado — pareie pelo cabo de novo)" % end[0])
                 c.close()
                 return
             antiga, self.conexao = self.conexao, c

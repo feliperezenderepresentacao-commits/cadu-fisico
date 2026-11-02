@@ -112,7 +112,7 @@ def interpretar_local(frase, agora=None):
     else:
         tipo = "nota"
     # texto limpo: tira o pedido e as expressões de tempo
-    t = re.sub(r"^(me )?(lembr\w*|lembrete|anota\w*|avisa\w*|nao (me deixa )?esquecer)( (de|que|pra|para|do|da))?\s*", "", frase.strip(), flags=re.I)
+    t = re.sub(r"^(me )?(lembr\w*|lembrete|anota\w*|avisa\w*|nao (me deixa )?esquecer)( (de|que|pra|para|do|da)\b)?\s*", "", frase.strip(), flags=re.I)
     t = re.sub(r"\b(depois de amanh[ãa]|amanh[ãa]|hoje|daqui (a |uns |umas )?\S+ (e meia )?(minutos?|min|horas?|h))\b", "", t, flags=re.I)
     t = re.sub(r"\b(na |no |nesta |neste )?(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(-feira)?\b", "", t, flags=re.I)
     t = re.sub(r"\b([àa]s?|ao) (\d{1,2}([:h]\d{2})?\s*(h|hs|horas?)?|meio[- ]dia( e meia)?|meia[- ]noite)\b", "", t, flags=re.I)
@@ -147,7 +147,11 @@ def notificar(titulo, texto):
           "$n.Visible = $true; $n.ShowBalloonTip(15000, '%s', '%s', [System.Windows.Forms.ToolTipIcon]::Info);"
           "Start-Sleep -Seconds 16; $n.Dispose()" % (t, x))
     try:
-        subprocess.Popen(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps], creationflags=SEM_JANELA)
+        exe = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+        if not os.path.isfile(exe):
+            exe = "powershell"
+        subprocess.Popen([exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", ps], creationflags=SEM_JANELA,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
         print("[agenda] notificação falhou:", e)
 
@@ -244,7 +248,8 @@ class Agenda:
         exe = sys.executable.replace("python.exe", "pythonw.exe")
         pos = idx if idx is not None else len([p for p in self.postits.values() if p.poll() is None])
         try:
-            self.postits[n["id"]] = subprocess.Popen([exe, str(PASTA / "postit.py"), str(n["id"]), str(pos)], creationflags=SEM_JANELA)
+            self.postits[n["id"]] = subprocess.Popen([exe, str(PASTA / "postit.py"), str(n["id"]), str(pos)], creationflags=SEM_JANELA,
+                                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
             self.log("[agenda] post-it falhou: %s" % e)
 
