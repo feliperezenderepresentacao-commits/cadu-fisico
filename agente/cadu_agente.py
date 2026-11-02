@@ -414,6 +414,17 @@ class Handler(BaseHTTPRequestHandler):
         if not self._autorizado(urllib.parse.parse_qs(u.query)):
             return self._json({"erro": "não autorizado"}, 403)
         try:
+            if u.path == "/api/voz/audio":   # gravação feita no celular sem PC (PCM 16 kHz mono)
+                tam = int(self.headers.get("Content-Length") or 0)
+                if tam <= 0 or tam > 4 * 1024 * 1024:
+                    return self._json({"ok": False, "msg": "tamanho inválido"}, 400)
+                pcm = self.rfile.read(tam)
+                try:
+                    ts = float((urllib.parse.parse_qs(u.query).get("ts") or ["0"])[0]) / 1000.0
+                except ValueError:
+                    ts = 0
+                threading.Thread(target=OUVIDO.gravacao_offline, args=(pcm, ts), daemon=True).start()
+                return self._json({"ok": True})
             pedido = self._corpo()
             if u.path == "/api/acao":
                 cfg = carregar_config()

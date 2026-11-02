@@ -178,8 +178,9 @@ class Agenda:
         self.eventos = (self.eventos + [kv])[-30:]
 
     # ------------------------------------------------ entrada principal
-    def processar(self, frase_bruta):
-        """Recebe a frase transcrita e devolve (texto_para_falar, nota|None)."""
+    def processar(self, frase_bruta, agora=None):
+        """Recebe a frase transcrita e devolve (texto_para_falar, nota|None).
+        agora = momento em que a frase foi falada (gravações feitas sem PC chegam depois)."""
         frase = limpar_chamado(frase_bruta)
         if len(frase) < 2:
             return "Não entendi. Fala de novo?", None
@@ -187,26 +188,26 @@ class Agenda:
         r = None
         if cerebro.disponivel(cfg):
             try:
-                r = cerebro.interpretar(cfg, frase)
+                r = cerebro.interpretar(cfg, frase, agora)
             except Exception as e:
                 self.log("[agenda] cérebro falhou (%s) — usando regras locais" % e)
         if r is None:
-            r = interpretar_local(frase)
+            r = interpretar_local(frase, agora)
         if r["tipo"] == "pergunta":
             resp = r["resposta"] or ("Ainda não tenho o cérebro ligado para responder. Anotei a pergunta."
                                      if not cerebro.disponivel(cfg) else "Não sei responder isso agora.")
             self._evento(tipo="pergunta", texto=frase, resposta=resp)
             if not r["resposta"]:
-                self.criar("nota", frase, None)
+                self.criar("nota", frase, None, agora)
             return resp, None
-        nota = self.criar(r["tipo"], r["texto"], r["quando"])
+        nota = self.criar(r["tipo"], r["texto"], r["quando"], agora)
         fala = r["resposta"] or ("Anotado: %s%s." % (nota["texto"], (", " + quando_falado(r["quando"])) if r["quando"] else ""))
         return fala, nota
 
-    def criar(self, tipo, texto, quando):
+    def criar(self, tipo, texto, quando, agora=None):
         with self.trava:
             self.seq += 1
-            n = {"id": self.seq, "tipo": tipo, "texto": texto, "criado": time.time(),
+            n = {"id": self.seq, "tipo": tipo, "texto": texto, "criado": agora.timestamp() if agora else time.time(),
                  "quando": quando.timestamp() if quando else None, "disparado": False, "feito": False}
             self.notas.append(n)
             self._salvar()

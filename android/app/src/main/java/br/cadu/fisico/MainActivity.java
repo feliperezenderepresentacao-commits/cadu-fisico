@@ -293,7 +293,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.7.2-voz"; }
+        public String versao() { return "0.8-offline"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -414,6 +414,18 @@ public class MainActivity extends Activity {
                 }
             } }).start();
         }
+
+        /** Sem PC: grava um post-it de voz no próprio celular (enviado quando o PC voltar). */
+        @JavascriptInterface
+        public boolean gravarIniciar() { return Gravador.iniciar(MainActivity.this, new Gravador.Aviso() {
+            public void mudou(String estado, int segundos, int pendentes) { js("aoGravador('" + estado + "'," + segundos + "," + pendentes + ")"); }
+        }); }
+
+        @JavascriptInterface
+        public void gravarParar() { Gravador.parar(); }
+
+        @JavascriptInterface
+        public int pendentes() { return Gravador.pendentes(MainActivity.this); }
 
         /** Fase 2: liga/desliga o ouvido (microfone repassado ao PC). */
         @JavascriptInterface

@@ -24,6 +24,10 @@
   #par h2 { color: #ffd166; font-size: 5vmin; margin: 0 0 3vmin; }
   #parMsg { font-size: 3.8vmin; min-height: 10vmin; padding: 0 6vmin; }
   #cod { width: 46vmin; font-size: 8vmin; letter-spacing: 2vmin; text-align: center; background: #111c21; color: #fff; border: .4vmin solid #3a6f7d; border-radius: 2vmin; padding: 1vmin; }
+  #mic { position: absolute; left: 50%; bottom: 26vmin; -webkit-transform: translateX(-50%); transform: translateX(-50%); height: 15vmin; line-height: 15vmin;
+         padding: 0 7vmin; border-radius: 7.5vmin; background: #12362c; border: .5vmin solid #06d6a0; color: #e8fff6; font-size: 5vmin; white-space: nowrap; }
+  #mic.rec { background: #3d1621; border-color: #ef476f; -webkit-animation: respira 1s ease-in-out infinite; animation: respira 1s ease-in-out infinite; }
+  #micInfo { position: absolute; left: 0; right: 0; bottom: 20vmin; text-align: center; color: #6fb3a0; font-size: 3.4vmin; }
   .bt.ok { background: #06d6a0; color: #0d1020; border-color: #06d6a0; }
 </style>
 </head>
@@ -40,6 +44,8 @@
     <span class="bt ok" id="confirmar">Confirmar</span> <span class="bt" id="outro">Pedir outro código</span> <span class="bt" id="fechar">Fechar</span>
   </div>
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
+  <div id="mic">🎤 Gravar post-it</div>
+  <div id="micInfo"></div>
   <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica"></span></div>
 <script>
   // A busca (cabo e Wi-Fi) é feita pelo app; aqui só a mensagem e os atalhos.
@@ -68,6 +74,18 @@
   document.getElementById("outro").onclick = pedir;
   document.getElementById("fechar").onclick = function () { par.className = ""; };
   document.getElementById("confirmar").onclick = function () { pm.textContent = "Conferindo…"; try { Cadu.enviarCodigo(cod.value); } catch (e) {} };
+  // post-it de voz sem PC: grava aqui e manda quando o PC voltar
+  var mic = document.getElementById("mic"), mi = document.getElementById("micInfo");
+  function pend(n) { mi.textContent = n ? n + (n > 1 ? " post-its esperando" : " post-it esperando") + " o PC — vão sozinhos quando ele voltar" : "fale depois de tocar · para sozinho quando você parar de falar"; }
+  try { pend(Cadu.pendentes()); } catch (e) { mic.style.display = "none"; }
+  mic.onclick = function () { try { Cadu.vibrar(30); Cadu.gravarIniciar(); } catch (e) {} };
+  window.aoGravador = function (estado, seg, n) {
+    if (estado === "gravando") { mic.className = "rec"; mic.textContent = "⏹ Gravando… " + seg + "s"; mi.textContent = "toque para terminar"; return; }
+    mic.className = ""; mic.textContent = "🎤 Gravar post-it";
+    if (estado === "salvo") { pend(n); try { Cadu.vibrarPadrao(); } catch (e) {} }
+    else if (estado === "vazio") mi.textContent = "não ouvi nada — toque e fale mais perto";
+    else if (estado === "erro") mi.textContent = "microfone ocupado — tente de novo";
+  };
   info();
 </script>
 </body>

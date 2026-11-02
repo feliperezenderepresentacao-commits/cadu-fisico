@@ -144,6 +144,8 @@ public class OuvidoService extends Service {
                 }
                 rec.startRecording();
                 conectado = true;
+                final String host = s.getInetAddress().getHostAddress();
+                new Thread(new Runnable() { public void run() { Gravador.enviarPendentes(OuvidoService.this, host); } }).start();
                 final Socket sock = s;
                 Thread leitor = new Thread(new Runnable() { public void run() { ouvirPC(sock); } });
                 leitor.setDaemon(true);

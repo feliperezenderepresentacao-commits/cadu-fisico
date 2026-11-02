@@ -239,3 +239,25 @@ class Ouvido:
             self.ocupado = False
             if time.time() >= self.espera_ate:
                 self.estado["ouvindo"] = False
+
+    def gravacao_offline(self, pcm, ts):
+        """Áudio gravado no celular quando o PC estava fora (botão 🎤). Não precisa dizer "Cadu"."""
+        import numpy as np
+        from datetime import datetime
+        if self.whisper is None:
+            self.log("[voz] gravação offline recebida, mas o Whisper não está pronto")
+            return False
+        try:
+            sinal = np.frombuffer(pcm[:len(pcm) // 2 * 2], dtype=np.int16).astype(np.float32) / 32768.0
+            segs, _ = self.whisper.transcribe(sinal, language="pt", beam_size=1, vad_filter=True,
+                                              initial_prompt="Anotação para o Cadu.")
+            texto = " ".join(x.text.strip() for x in segs).strip()
+            quando = datetime.fromtimestamp(ts) if ts else None
+            self.log("[voz] gravação offline (%s): %r" % (quando.strftime("%d/%m %H:%M") if quando else "?", texto))
+            if not texto:
+                return True
+            self.agenda.processar("Cadu, " + texto, quando)
+            return True
+        except Exception as e:
+            self.log("[voz] erro na gravação offline: %s" % e)
+            return False
