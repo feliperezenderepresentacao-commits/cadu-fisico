@@ -34,6 +34,22 @@
 
   /* ================= MUNDO ================= */
   #mundoTela { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+  #cena3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
+  body.modo-3d #cena3d { display: block; } body.modo-3d #mundo { display: none; }
+  #veu3d { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #0d1020; opacity: 0; pointer-events: none;
+           -webkit-transition: opacity .25s steps(4); transition: opacity .25s steps(4); }
+  #veu3d.ver { opacity: 1; }
+  #nomeMundo { position: absolute; top: 3vmin; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); text-align: center; display: none; pointer-events: none; }
+  body.modo-3d #nomeMundo { display: block; }
+  #nomeMundo .t { font-family: "Silkscreen", monospace; font-size: 3.6vmin; text-transform: uppercase; color: var(--amarelo); text-shadow: var(--p) var(--p) 0 #000; }
+  #nomeMundo .c { font-size: 3vmin; color: var(--texto); text-shadow: var(--p) var(--p) 0 #000; margin-top: .6vmin; }
+  .dica { position: absolute; display: none; -webkit-align-items: center; align-items: center; font-family: "Silkscreen", monospace; font-size: 2.6vmin;
+          text-transform: uppercase; color: rgba(241,242,246,.75); text-shadow: var(--p) var(--p) 0 #000; pointer-events: none; }
+  body.modo-3d .dica.ver { display: -webkit-flex; display: flex; }
+  .dica .pxi { width: 4vmin; height: 4vmin; margin: 0 1vmin; }
+  #dCima { top: 15vmin; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); }
+  #dBaixo { bottom: 18vmin; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); }
+  #dEsq { left: 2vmin; top: 50%; } #dDir { right: 2vmin; top: 50%; }
   #mundo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: -webkit-optimize-contrast; }
   #hud { position: absolute; top: 2.5vmin; left: 3vmin; padding: 2vmin 2.6vmin; min-width: 34vmin; }
   #hud .nome { font-size: 4.2vmin; font-weight: 700; color: var(--ciano); }
@@ -58,6 +74,7 @@
   #rosto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; }
   body.modo-olhos #rosto { display: block; }
   body.modo-olhos #mundoTela { display: none; }
+  body.modo-olhos.modo-3d #mundoTela { display: none; }
   #olhos { position: absolute; left: 50%; top: 46%; width: 112vmin; height: 50vmin; margin-left: -56vmin; margin-top: -25vmin;
            -webkit-transition: -webkit-transform .5s ease; transition: transform .5s ease; }
   .olho { position: absolute; top: 0; width: 38vmin; height: 50vmin; background: var(--olho); border-radius: 15vmin; overflow: hidden;
@@ -162,6 +179,10 @@
 
 <div id="mundoTela">
   <canvas id="mundo"></canvas>
+  <div id="cena3d"></div>
+  <div id="veu3d"></div>
+  <div id="nomeMundo"><div class="t" id="nmT"></div><div class="c" id="nmC"></div></div>
+  <div class="dica" id="dCima"></div><div class="dica" id="dBaixo"></div><div class="dica" id="dEsq"></div><div class="dica" id="dDir"></div>
   <div id="hud" class="caixa">
     <div><span class="nome titulo" id="petNome">Cadu</span><span class="fase" id="petFase">bebê</span></div>
     <div class="barra" id="bBarriga"></div>
@@ -170,12 +191,7 @@
   </div>
   <div id="hudDir"><div id="relogio">--:--</div><div id="conexao"></div></div>
   <div id="balao"></div>
-  <div id="ferramentas">
-    <div class="ferr caixa" data-acao="comer"></div>
-    <div class="ferr caixa" data-acao="brincar"></div>
-    <div class="ferr caixa" data-acao="luz"></div>
-    <div class="ferr caixa" data-acao="menu"></div>
-  </div>
+  <div id="ferramentas"></div>
 </div>
 
 <div id="rosto"><div id="olhos"><div class="olho e"></div><div class="olho d"></div></div></div>
@@ -260,8 +276,9 @@
     desenharBarra($("bBarriga"), "apple", "#ff8a65", e.barriga);
     desenharBarra($("bAlegria"), "heart", "#ef476f", e.alegria);
     desenharBarra($("bEnergia"), "zap", "#ffd166", e.energia);
-    Mundo.estado(e);
-    comIcone(document.querySelector('[data-acao="luz"]'), e.dormindo ? "lightbulb-off" : "lightbulb", null, e.dormindo ? "#9aa6cc" : "#ffd166");
+    Mundo.estado(e); if (window.Mundo3D && m3d) Mundo3D.estado(e);
+    var luz = document.querySelector('[data-acao="luz"]');
+    if (luz) comIcone(luz, e.dormindo ? "lightbulb-off" : "lightbulb", null, e.dormindo ? "#9aa6cc" : "#ffd166");
   }
   function carregarPet() { pedir("GET", "/api/pet", null, function (er, e) { if (!er) mostrarPet(e); }); }
   function agirPet(acao) {
@@ -282,31 +299,87 @@
   }
   // de vez em quando ele pede alguma coisa
   setInterval(function () {
-    var e = petEstado; if (!e || e.dormindo || e.fase === "ovo" || modoTela !== "mundo" || painel.className) return;
+    var e = petEstado; if (!e || e.dormindo || e.fase === "ovo" || modoTela === "olhos" || painel.className) return;
     if (e.barriga < 30) falar("Tô com fome…");
     else if (e.energia < 25) falar("Que soninho…");
     else if (e.alegria < 30) falar("Brinca comigo?");
     else if (Math.random() < .15) falar(["Oi, Felipe!", "Tudo certo por aqui.", "♪ la la la", "Bora trabalhar?"][Math.floor(Math.random() * 4)]);
   }, 45000);
 
-  var FERR = { comer: ["apple", "#ff8a65"], brincar: ["gamepad", "#5ce1e6"], luz: ["lightbulb", "#ffd166"], menu: ["menu", "#f1f2f6"] };
-  var ferrs = document.querySelectorAll(".ferr");
-  for (var i = 0; i < ferrs.length; i++) (function (f) {
-    var a = f.getAttribute("data-acao");
-    comIcone(f, FERR[a][0], null, FERR[a][1]);
-    f.addEventListener("click", function (ev) {
-      ev.stopPropagation(); apertar(f); vibrar(20);
-      if (a === "menu") return abrirPainel();
-      var r = Mundo.acao(a);
-      if (r === "ovo") return falar("Ainda sou um ovo! Faz carinho.");
-      if (r === "dormindo" && a !== "luz") return falar("Zzz…");
-      if (a === "comer") setTimeout(function () { agirPet("alimentar"); }, 1800);
-      if (a === "brincar") setTimeout(function () { agirPet("brincar"); }, 2500);
-      if (a === "luz") agirPet(Mundo.luz() ? "dormir" : "acordar");
-    });
-  })(ferrs[i]);
+  // ---------------------------------------------------------------- barra de ferramentas (muda conforme o mundo)
+  var ICO = { comer: ["apple", "#ff8a65"], brincar: ["gamepad", "#5ce1e6"], luz: ["lightbulb", "#ffd166"], menu: ["menu", "#f1f2f6"],
+              casa: ["home", "#06d6a0"], peixes: ["fish", "#5ce1e6"], comerColheita: ["apple", "#ff8a65"] };
+  function montarFerramentas(lista) {
+    var b = $("ferramentas"); b.innerHTML = "";
+    for (var i = 0; i < lista.length; i++) (function (it) {
+      var id = it.id || it, f = el("div", "ferr caixa"); f.setAttribute("data-acao", id);
+      var ic = ICO[id] || [it.icone, it.cor];
+      comIcone(f, it.icone || ic[0], null, it.cor || ic[1]);
+      f.addEventListener("click", function (ev) { ev.stopPropagation(); apertar(f); vibrar(20); usarFerramenta(id); });
+      b.appendChild(f);
+    })(lista[i]);
+    if (petEstado) mostrarPet(petEstado);
+  }
+  function usarFerramenta(a) {
+    if (a === "menu") return abrirPainel();
+    if (modoTela === "mundo3d") {
+      if (a === "luz") { Mundo3D.ferramenta("luz"); return agirPet(petEstado && petEstado.dormindo ? "acordar" : "dormir"); }
+      var ok = Mundo3D.ferramenta(a);
+      if (ok && a === "comer") setTimeout(function () { agirPet("alimentar"); }, 2200);
+      if (ok && a === "brincar") setTimeout(function () { agirPet("brincar"); }, 2500);
+      return;
+    }
+    var r = Mundo.acao(a);
+    if (r === "ovo") return falar("Ainda sou um ovo! Faz carinho.");
+    if (r === "dormindo" && a !== "luz") return falar("Zzz…");
+    if (a === "comer") setTimeout(function () { agirPet("alimentar"); }, 1800);
+    if (a === "brincar") setTimeout(function () { agirPet("brincar"); }, 2500);
+    if (a === "luz") agirPet(Mundo.luz() ? "dormir" : "acordar");
+  }
 
   Mundo.iniciar($("mundo"), { aoAgir: agirPet, aoQuadro: seguirPet, margemBaixo: 26 });
+
+  // ---------------------------------------------------------------- MUNDOS 3D (carregados só quando usados)
+  var m3d = false;
+  var SETAS = { cima: ["dCima", "arrow-up"], baixo: ["dBaixo", "arrow-down"], esquerda: ["dEsq", "arrow-left"], direita: ["dDir", "arrow-right"] };
+  var NOMES3D = { vila: "Vila do Cadu", ceu: "Céu", mar: "Mar", horta: "Horta", estrada: "Estrada" };
+  function carregarScript(src, cb) { var s = document.createElement("script"); s.src = src; s.onload = function () { cb(); }; s.onerror = function () { cb(true); }; document.body.appendChild(s); }
+  function iniciar3D(cb) {
+    if (m3d) return cb();
+    carregarScript("/static/three.min.js", function (erro) {
+      if (erro) return cb(true);
+      carregarScript("/static/mundo3d.js", function (e2) {
+        if (e2 || !Mundo3D.suportado()) return cb(true);
+        Mundo3D.iniciar($("cena3d"), {
+          aoAgir: agirPet, aoQuadro: seguirPet, falar: falar,
+          salvar: function (j) { pedir("POST", "/api/jogo", { jogo: j }); },
+          aoContador: function (t) { $("nmC").textContent = t; },
+          semSaida: function () { falar("Por aqui não tem caminho."); },
+          aoMundo: function (id, nome, viz, ferr) {
+            $("nmT").textContent = nome;
+            for (var d in SETAS) {
+              var e = $(SETAS[d][0]);
+              if (viz[d]) {
+                e.innerHTML = "";
+                var ic = icone(SETAS[d][1]);
+                if (d === "direita") { e.appendChild(document.createTextNode(NOMES3D[viz[d]])); e.appendChild(ic); }
+                else { e.appendChild(ic); e.appendChild(document.createTextNode(NOMES3D[viz[d]])); }
+                e.className = "dica ver";
+              } else e.className = "dica";
+            }
+            var lista = ferr.slice();
+            if (id === "vila") lista.push({ id: "luz" }); else lista.push({ id: "casa" });
+            lista.push({ id: "menu" });
+            montarFerramentas(lista);
+          }
+        });
+        m3d = true;
+        pedir("GET", "/api/jogo", null, function (er, j) { if (!er && j) Mundo3D.jogo(j); });
+        if (petEstado) Mundo3D.estado(petEstado);
+        cb();
+      });
+    });
+  }
 
   // ---------------------------------------------------------------- OLHOS (modo alternativo)
   var humorBase = "", humorTemp = null;
@@ -324,15 +397,30 @@
   rosto.addEventListener("click", function () { humorPassageiro("feliz", 500); abrirPainel(); });
 
   function aplicarModo(m) {
-    modoTela = m === "olhos" ? "olhos" : "mundo";
-    document.body.className = (document.body.className.indexOf("com-alerta") >= 0 ? "com-alerta " : "") + (modoTela === "olhos" ? "modo-olhos" : "");
+    modoTela = (m === "olhos" || m === "mundo") ? m : "mundo3d";
+    var alerta = document.body.className.indexOf("com-alerta") >= 0 ? " com-alerta" : "";
+    if (modoTela === "mundo3d") {
+      document.body.className = "modo-3d" + alerta;
+      iniciar3D(function (erro) {
+        if (erro) { falar("3D indisponível, usando o mundo pixel."); return aplicarModo("mundo"); }
+        Mundo.ativo(false); Mundo3D.ativo(!painel.className);
+      });
+      return;
+    }
+    document.body.className = (modoTela === "olhos" ? "modo-olhos" : "") + alerta;
+    if (m3d) Mundo3D.ativo(false);
     Mundo.ativo(modoTela === "mundo" && !painel.className);
+    if (modoTela === "mundo") montarFerramentas([{ id: "comer" }, { id: "brincar" }, { id: "luz" }, { id: "menu" }]);
+  }
+  function ligarMundos(sim) {
+    Mundo.ativo(sim && modoTela === "mundo");
+    if (m3d) Mundo3D.ativo(sim && modoTela === "mundo3d");
   }
 
   // ---------------------------------------------------------------- MENU e páginas
   comIcone($("voltar"), "chevron-left", "voltar");
-  function abrirPainel() { vibrar(20); painel.className = "aberto"; Mundo.ativo(false); irPagina(0); reiniciarOcioso(); }
-  function fecharPainel() { painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} Mundo.ativo(modoTela === "mundo"); }
+  function abrirPainel() { vibrar(20); painel.className = "aberto"; ligarMundos(false); irPagina(0); reiniciarOcioso(); }
+  function fecharPainel() { painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
   function reiniciarOcioso() { clearTimeout(timerOcioso); timerOcioso = setTimeout(fecharPainel, OCIOSO_MS); }
   window.aoVoltar = function () { if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
   $("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); apertar(this); fecharPainel(); });
@@ -441,8 +529,9 @@
   function montarAjustes() {
     var L = $("ajustes"); L.innerHTML = "";
     var rede = null; try { rede = JSON.parse(Cadu.infoRede()); } catch (e) {}
-    itemAjuste(L, "Tela de descanso", modoTela === "mundo" ? "mundo do Cadu" : "olhos", [
-      { texto: "mundo", icone: "home", marcada: modoTela === "mundo", fn: function () { trocarModo("mundo"); } },
+    itemAjuste(L, "Tela de descanso", { mundo3d: "5 mundos 3D", mundo: "quarto pixel", olhos: "olhos" }[modoTela], [
+      { texto: "3D", icone: "map", marcada: modoTela === "mundo3d", fn: function () { trocarModo("mundo3d"); } },
+      { texto: "pixel", icone: "home", marcada: modoTela === "mundo", fn: function () { trocarModo("mundo"); } },
       { texto: "olhos", icone: "eye", marcada: modoTela === "olhos", fn: function () { trocarModo("olhos"); } }]);
     itemAjuste(L, "Wi-Fi do celular", rede ? (!rede.wifiLigado ? "desligado" : (rede.rede ? rede.rede + " · " + rede.ip : "ligado, sem rede")) : "—", [
       { texto: "abrir", icone: "wifi", fn: function () { ponte(function () { Cadu.abrirWifi(); }); } }]);
@@ -463,7 +552,7 @@
   }
   function trocarModo(m) {
     pedir("POST", "/api/prefs", { tela: m }, function () {});
-    aplicarModo(m); montarAjustes(); msg.textContent = "Tela de descanso: " + (m === "mundo" ? "mundo do Cadu" : "olhos") + ".";
+    aplicarModo(m); ligarMundos(false); montarAjustes(); msg.textContent = "Tela de descanso: " + ({ mundo3d: "5 mundos 3D", mundo: "quarto pixel", olhos: "olhos" }[m]) + ".";
   }
 
   // ---------------------------------------------------------------- avisos de notícias
@@ -485,7 +574,7 @@
     if (painel.className) msg.textContent = n.catNome + " · " + n.titulo;
     rodape.innerHTML = ""; rodape.appendChild(el("b", null, n.catNome)); rodape.appendChild(document.createTextNode(n.titulo));
     rodape.k = n.k; rodape.className = "caixa ver"; vibrar(30);
-    if (modoTela === "mundo") falar("Notícia nova!");
+    if (modoTela !== "olhos") falar("Notícia nova!");
     setTimeout(function () { rodape.className = "caixa"; setTimeout(function () { rodando = false; proximo(); }, 400); }, 14000);
   }
   function mostrarUrgente(n) {
@@ -495,7 +584,7 @@
     alerta.className = "ver";
     document.body.className += " com-alerta";
     if (painel.className) msg.textContent = n.catNome + " · " + n.titulo;
-    Mundo.surpreso(); humorPassageiro("surpreso", 3000);
+    Mundo.surpreso(); if (m3d) Mundo3D.surpreso(); humorPassageiro("surpreso", 3000);
     try { if (window.Cadu) Cadu.vibrarPadrao(); } catch (e) {}
     clearTimeout(timerUrg); clearInterval(contagem);
     var seg = 20; $("aseg").textContent = seg;
@@ -525,7 +614,7 @@
         $("tVia").textContent = r.via === "wifi" ? "wi-fi" : "cabo";
         $("conexao").textContent = (r.via === "wifi" ? "wi-fi" : "cabo") + (vps ? (vpsFora ? " · VPS FORA!" : " · vps ok") : "");
         $("pVps").className = "ponto" + (vps ? (vpsFora ? " erro" : " ok") : "");
-        Mundo.doente(vpsFora);
+        Mundo.doente(vpsFora); if (m3d) Mundo3D.doente(vpsFora);
         humorBase = vpsFora ? "bravo" : "";
         aviso.className = vpsFora ? "alerta" : ""; if (vpsFora) aviso.textContent = "VPS fora do ar!"; else if (aviso.textContent === "VPS fora do ar!") aviso.textContent = "";
         aplicarHumor();
@@ -539,7 +628,7 @@
   }
 
   // ---------------------------------------------------------------- início
-  pedir("GET", "/api/prefs", null, function (er, p) { aplicarModo(!er && p ? p.tela : "mundo"); });
+  pedir("GET", "/api/prefs", null, function (er, p) { aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();

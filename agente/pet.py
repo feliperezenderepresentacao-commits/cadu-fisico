@@ -113,6 +113,9 @@ class Pet:
                     e["barriga"] = max(MINIMO, e["barriga"] - 5)
                     e["brincadeiras"] += 1
                     msg = "Que divertido!"
+            elif acao == "recompensa":   # conquistas nos mundos (estrelas, tesouro, colheita, recorde)
+                e["alegria"] = min(100.0, e["alegria"] + 3)
+                msg = ""
             elif acao == "dormir":
                 e["dormindo"] = True
                 msg = "Boa noite…"

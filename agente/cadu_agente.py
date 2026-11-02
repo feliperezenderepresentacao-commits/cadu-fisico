@@ -39,7 +39,8 @@ WEB = PASTA.parent / "web"
 CONFIG = PASTA / "config.json"
 ARQ_TOKEN = PASTA / "token.txt"
 ARQ_PREFS = PASTA / "prefs.json"
-PREFS_PADRAO = {"tela": "mundo"}
+ARQ_JOGO = PASTA / "jogo.json"
+PREFS_PADRAO = {"tela": "mundo3d"}
 
 
 def ler_prefs():
@@ -292,7 +293,7 @@ class Handler(BaseHTTPRequestHandler):
             raiz = (WEB / "static").resolve()
             alvo = (WEB / u.path.lstrip("/")).resolve()
             if raiz in alvo.parents and alvo.is_file() and alvo.suffix in TIPOS:
-                return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2"))
+                return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2") or alvo.name == "three.min.js")
             return self._json({"erro": "não encontrado"}, 404)
         if not self._autorizado(q):
             return self._json({"erro": "não autorizado"}, 403)
@@ -316,6 +317,11 @@ class Handler(BaseHTTPRequestHandler):
             self._json(PET.estado())
         elif u.path == "/api/prefs":
             self._json(ler_prefs())
+        elif u.path == "/api/jogo":
+            try:
+                self._json(json.loads(ARQ_JOGO.read_text(encoding="utf-8")))
+            except Exception:
+                self._json({})
         elif u.path == "/api/apk":
             a = achar_apk()
             self._json({"tem": bool(a), "nome": a.name if a else None,
@@ -357,10 +363,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": msg, "pet": estado})
             if u.path == "/api/prefs":
                 prefs = ler_prefs()
-                if pedido.get("tela") in ("mundo", "olhos"):
+                if pedido.get("tela") in ("mundo3d", "mundo", "olhos"):
                     prefs["tela"] = pedido["tela"]
                 ARQ_PREFS.write_text(json.dumps(prefs), encoding="utf-8")
                 return self._json({"ok": True, "prefs": prefs})
+            if u.path == "/api/jogo":
+                # progresso dos mundos 3D (moedas, estrelas, horta, recorde)
+                j = pedido.get("jogo")
+                if not isinstance(j, dict) or len(json.dumps(j)) > 20000:
+                    return self._json({"ok": False})
+                ARQ_JOGO.write_text(json.dumps(j, ensure_ascii=False), encoding="utf-8")
+                return self._json({"ok": True})
             if u.path == "/api/teste3d":
                 r = {k: pedido.get(k) for k in ("webgl", "fps", "gpu", "navegador")}
                 r["quando"] = time.strftime("%d/%m/%Y %H:%M")
