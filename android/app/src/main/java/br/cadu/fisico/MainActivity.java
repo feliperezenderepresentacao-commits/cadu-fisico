@@ -55,6 +55,7 @@ public class MainActivity extends Activity {
     private volatile boolean vivo = true;
     private volatile DatagramSocket sockBeacon;
     private volatile long desde = 0;
+    private volatile boolean jogando = false;   // jogo offline aberto: não troca de tela no meio da partida
     private WifiManager.MulticastLock trava;
 
     @Override
@@ -130,6 +131,7 @@ public class MainActivity extends Activity {
     private void irOffline() {
         brilhoNormal();
         conectado = false;
+        jogando = false;
         urlAtual = null;
         runOnUiThread(new Runnable() {
             public void run() { web.loadUrl(URL_OFFLINE); }
@@ -141,7 +143,7 @@ public class MainActivity extends Activity {
         Thread t = new Thread(new Runnable() {
             public void run() {
                 while (vivo) {
-                    if (!conectado) {
+                    if (!conectado && !jogando) {
                         final String url = acharAgente();
                         if (url != null) {
                             android.util.Log.i("cadu", "conectando " + url.replaceAll("t=.*", "t=***"));
@@ -541,6 +543,9 @@ public class MainActivity extends Activity {
         }
 
         /** Esquece o pareamento (o próximo cabo pareia de novo). */
+        @JavascriptInterface
+        public void jogando(boolean sim) { jogando = sim; }
+
         @JavascriptInterface
         public void esquecerPareamento() { prefs.edit().remove("token").remove("ip").apply(); }
 

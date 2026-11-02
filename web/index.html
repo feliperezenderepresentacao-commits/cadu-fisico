@@ -329,6 +329,17 @@
     body.com-notif #rTopo { left: 0; right: 0; top: 5vmin; }
     body.com-notif #rHora { font-size: 12vmin; }
   }
+  /* post-its em pé: campo na linha de cima, botões embaixo (nada vaza para o lado) */
+  #novaNota { min-width: 0; }
+  @media (orientation: portrait) {
+    .p2 .cab { height: 21vmin; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-align-content: space-between; align-content: space-between; }
+    .p2 #novaNota { -webkit-flex: 1 0 100%; flex: 1 0 100%; }
+    .p2 #addNota { margin-left: 0; }
+    .p2 .lista { top: 21vmin; }
+    .p2 .pi .tocar { display: none; }
+  }
+  /* menu aberto: o aviso de conversa e o rodapé saem da frente (alarme continua aparecendo) */
+  body.com-painel #claudeBar, body.com-painel #pilhaNotif #rodape { display: none !important; }
 </style>
 </head>
 <body>
@@ -383,6 +394,7 @@
       <div class="cab">
         <input id="novaNota" type="text" maxlength="200" placeholder="escreva um post-it… (ou diga &quot;Cadu, anota…&quot;)">
         <span class="acao caixa" id="addNota"></span>
+        <span class="acao caixa" id="minNotas"></span>
       </div>
       <div class="lista" id="notas"></div>
     </div>
@@ -665,14 +677,14 @@
     modoTela = (m === "olhos" || m === "mundo") ? m : "mundo3d";
     var alerta = document.body.className.indexOf("com-alerta") >= 0 ? " com-alerta" : "";
     if (modoTela === "mundo3d") {
-      document.body.className = "modo-3d" + alerta;
+      document.body.className = "modo-3d" + alerta + (painel.className ? " com-painel" : "");
       iniciar3D(function (erro) {
         if (erro) { falar("3D indisponível, usando o mundo pixel."); return aplicarModo("mundo"); }
         Mundo.ativo(false); Mundo3D.ativo(!painel.className);
       });
       return;
     }
-    document.body.className = (modoTela === "olhos" ? "modo-olhos" : "") + alerta;
+    document.body.className = (modoTela === "olhos" ? "modo-olhos" : "") + alerta + (painel.className ? " com-painel" : "");
     if (modoTela === "olhos") setTimeout(ajustarOlhos, 60);
     if (m3d) Mundo3D.ativo(false);
     Mundo.ativo(modoTela === "mundo" && !painel.className);
@@ -722,9 +734,9 @@
 
   // ---------------------------------------------------------------- MENU e páginas
   comIcone($("voltar"), "chevron-left", "voltar");
-  function abrirPainel() { vibrar(20); painel.className = "aberto"; ligarMundos(false); irPagina(0); reiniciarOcioso();
+  function abrirPainel() { vibrar(20); painel.className = "aberto"; if (document.body.className.indexOf("com-painel") < 0) document.body.className += " com-painel"; ligarMundos(false); irPagina(0); reiniciarOcioso();
     if (listaBotoes.length) setTimeout(function () { montarBotoes(listaBotoes); }, 30); }
-  function fecharPainel() { sairEdicao(); painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
+  function fecharPainel() { sairEdicao(); painel.className = ""; document.body.className = document.body.className.replace(/ ?com-painel/g, ""); msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
   function reiniciarOcioso() { clearTimeout(timerOcioso); timerOcioso = setTimeout(fecharPainel, OCIOSO_MS); }
   window.aoVoltar = function () { if (editando) return sairEdicao(); if (jogoAberto && !painel.className) return fecharJogo(); if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
   $("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); apertar(this); fecharPainel(); });
@@ -991,6 +1003,7 @@
   $("codigoSair").addEventListener("click", function (e) { e.stopPropagation(); $("codigoCx").className = "caixa"; });
   // ---------------------------------------------------------------- POST-ITS (mesmos do PC)
   function carregarNotas() {
+    if (typeof lerMin === "function") lerMin();
     pedir("GET", "/api/notas", null, function (er, l) {
       var L = $("notas"); L.innerHTML = "";
       if (er || !l) { L.appendChild(el("div", null, "Sem conexão com o PC.")).id = "semNotas"; return; }
@@ -1022,6 +1035,11 @@
     pedir("POST", "/api/voz/frase", { frase: t }, function (er, r) { msg.textContent = r && r.fala ? r.fala : "Falhou."; carregarNotas(); });
   }
   $("addNota").addEventListener("click", function (ev) { ev.stopPropagation(); anotarDigitado(); });
+  // minimizar / mostrar TODOS os post-its na tela do PC
+  function rotuloMin(min) { $("minNotas").innerHTML = ""; comIcone($("minNotas"), min ? "upload" : "download", min ? "mostrar no PC" : "minimizar no PC"); }
+  function lerMin() { pedir("GET", "/api/notas/minimizado", null, function (er, r) { if (!er && r) rotuloMin(r.min); }); }
+  $("minNotas").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(25); pedir("POST", "/api/notas/minimizar", { min: "alternar" }, function (er, r) { if (!er && r) rotuloMin(r.min); }); });
+  rotuloMin(false); lerMin();
   $("novaNota").addEventListener("keydown", function (ev) { if (ev.keyCode === 13) anotarDigitado(); });
 
   function trocarModo(m) {

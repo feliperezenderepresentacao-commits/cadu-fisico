@@ -29,6 +29,13 @@
          padding: 0 7vmin; border-radius: 7.5vmin; background: #12362c; border: .5vmin solid #06d6a0; color: #e8fff6; font-size: 5vmin; white-space: nowrap; }
   #mic.rec { background: #3d1621; border-color: #ef476f; -webkit-animation: respira 1s ease-in-out infinite; animation: respira 1s ease-in-out infinite; }
   #micInfo { position: absolute; z-index: 10; left: 0; right: 0; bottom: 5vmin; text-align: center; color: #6fb3a0; font-size: 3.4vmin; }
+  #jogos { position: absolute; z-index: 10; left: 0; right: 0; bottom: 32vmin; text-align: center; white-space: nowrap; }
+  #jogos .j { display: inline-block; width: 19vmin; margin: 0 1.2vmin; padding: 1.6vmin 0; border-radius: 3vmin; background: #111c21;
+              border: .3vmin solid #1d2e35; color: #cfe3e8; font-size: 3vmin; text-align: center; }
+  #jogos .j b { display: block; font-size: 7vmin; line-height: 1.1; }
+  #jogos .j:active { background: #1d3540; }
+  #tela { display: none; position: absolute; z-index: 30; top: 0; left: 0; width: 100%; height: 100%; border: 0; background: #000; }
+  #tela.ver { display: block; }
   .bt.ok { background: #06d6a0; color: #0d1020; border-color: #06d6a0; }
 </style>
 </head>
@@ -45,6 +52,10 @@
     <span class="bt ok" id="confirmar">Confirmar</span> <span class="bt" id="outro">Pedir outro código</span> <span class="bt" id="fechar">Fechar</span>
   </div>
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
+  <div id="jogos">
+    <span class="j" data-j="2048"><b>🔢</b>2048</span><span class="j" data-j="tetris"><b>🧱</b>Tetris</span><span class="j" data-j="torre"><b>🏗️</b>Torre</span><span class="j" data-j="pacman"><b>👾</b>Pac-Man</span>
+  </div>
+  <iframe id="tela"></iframe>
   <div id="mic">🎤 Gravar post-it</div>
   <div id="micInfo"></div>
   <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica" style="white-space:pre-line"></span></div>
@@ -88,6 +99,23 @@
     else if (estado === "vazio") mi.textContent = "não ouvi nada — toque e fale mais perto";
     else if (estado === "erro") mi.textContent = "microfone ocupado — tente de novo";
   };
+  // jogos dentro do app: funcionam sem o PC. Fecha sozinho após 90 s sem toque (aí o app volta a procurar o PC)
+  var tela = document.getElementById("tela"), toqueJogo = 0;
+  function abrirJogo(id) {
+    try { Cadu.jogando(true); Cadu.vibrar(20); } catch (e) {}
+    toqueJogo = Date.now();
+    tela.src = "jogos/" + id + "/index.html?estilo=bolinha"; tela.className = "ver";
+  }
+  function fecharJogo() { tela.className = ""; tela.src = "about:blank"; try { Cadu.jogando(false); } catch (e) {} }
+  var js = document.querySelectorAll("#jogos .j");
+  for (var i = 0; i < js.length; i++) js[i].onclick = function () { abrirJogo(this.getAttribute("data-j")); };
+  window.addEventListener("message", function (e) {
+    var d = e.data || {};
+    if (d.cadu === "toque") toqueJogo = Date.now();
+    else if (d.cadu === "sair") fecharJogo();
+  });
+  window.aoVoltar = function () { if (tela.className) fecharJogo(); };
+  setInterval(function () { if (tela.className && Date.now() - toqueJogo > 90000) fecharJogo(); }, 3000);
   info();
 </script>
 </body>

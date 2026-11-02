@@ -1,8 +1,8 @@
 /* Moldura comum dos jogos do Cadu (paisagem, visual pixel) */
-@font-face { font-family: "Orbitron"; src: url(/static/fontes/orbitron-latin-500-normal.woff) format("woff"); font-weight: 400; }
-@font-face { font-family: "Orbitron"; src: url(/static/fontes/orbitron-latin-700-normal.woff) format("woff"); font-weight: 700; }
-@font-face { font-family: "Oxanium"; src: url(/static/fontes/oxanium-latin-400-normal.woff) format("woff"); font-weight: 400; }
-@font-face { font-family: "Oxanium"; src: url(/static/fontes/oxanium-latin-600-normal.woff) format("woff"); font-weight: 600; }
+@font-face { font-family: "Orbitron"; src: url(../fontes/orbitron-latin-500-normal.woff) format("woff"); font-weight: 400; }
+@font-face { font-family: "Orbitron"; src: url(../fontes/orbitron-latin-700-normal.woff) format("woff"); font-weight: 700; }
+@font-face { font-family: "Oxanium"; src: url(../fontes/oxanium-latin-400-normal.woff) format("woff"); font-weight: 400; }
+@font-face { font-family: "Oxanium"; src: url(../fontes/oxanium-latin-600-normal.woff) format("woff"); font-weight: 600; }
 :root { --fundo: #0d1020; --bg2: #1d2540; --borda: #39446b; --texto: #f1f2f6; --suave: #9aa6cc; --ciano: #5ce1e6; --amarelo: #ffd166; --rosa: #ef476f; --verde: #06d6a0; --p: .6vmin; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--fundo); color: var(--texto); font-family: "Oxanium", sans-serif;
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }

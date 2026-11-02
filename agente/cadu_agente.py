@@ -325,6 +325,20 @@ def executar(botao, cfg):
 NOTICIAS = None  # definido no main()
 PET = None
 AGENDA = None    # Fase 2: agenda por voz
+ARQ_POSTIT = PASTA / "postit_estado.json"   # {"min": true} = todos os post-its do PC minimizados
+
+
+def postits_minimizados():
+    try:
+        return bool(json.loads(ARQ_POSTIT.read_text(encoding="utf-8")).get("min"))
+    except Exception:
+        return False
+
+
+def minimizar_postits(valor):
+    v = (not postits_minimizados()) if valor == "alternar" else bool(valor)
+    ARQ_POSTIT.write_text(json.dumps({"min": v}), encoding="utf-8")
+    return v
 CONVERSA = None  # status das conversas com o Claude (via GitHub)
 PAREAR = {"codigo": None, "ate": 0, "erros": 0}   # pareamento sem cabo (código de 6 dígitos)
 
@@ -438,6 +452,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(clima.obter(carregar_config()) or {})
         elif u.path == "/api/notas":
             self._json(AGENDA.lista())
+        elif u.path == "/api/notas/minimizado":
+            self._json({"min": postits_minimizados()})
         elif u.path == "/api/prefs":
             self._json(ler_prefs())
         elif u.path == "/api/jogo":
@@ -522,6 +538,8 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/notas/adiar":
                 AGENDA.adiar(int(pedido.get("id") or 0), max(1, min(24 * 60, int(pedido.get("min") or 10))))
                 return self._json({"ok": True})
+            if u.path == "/api/notas/minimizar":   # minimiza/mostra TODOS os post-its do PC
+                return self._json({"ok": True, "min": minimizar_postits(pedido.get("min", "alternar"))})
             if u.path == "/api/notas/feito":
                 AGENDA.feito(int(pedido.get("id") or 0))
                 return self._json({"ok": True})

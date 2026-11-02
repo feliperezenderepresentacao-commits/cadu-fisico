@@ -44,6 +44,26 @@ def ler_nota():
     return None
 
 
+ARQ_ESTADO = PASTA / "postit_estado.json"
+HM = 40   # altura da tirinha minimizada
+
+
+def todos_minimizados():
+    try:
+        return bool(json.loads(ARQ_ESTADO.read_text(encoding="utf-8")).get("min"))
+    except Exception:
+        return False
+
+
+def alternar_todos():
+    """Minimiza/mostra TODOS os post-its (pelo agente; sem ele, grava o arquivo direto)."""
+    if not api("/api/notas/minimizar", {"min": "alternar"}):
+        try:
+            ARQ_ESTADO.write_text(json.dumps({"min": not todos_minimizados()}), encoding="utf-8")
+        except Exception:
+            pass
+
+
 def api(caminho, dados):
     try:
         req = urllib.request.Request("http://127.0.0.1:%d%s" % (PORTA, caminho), data=json.dumps(dados).encode(),
@@ -91,7 +111,7 @@ def ret_arredondado(x1, y1, x2, y2, r, **kw):
     return cv.create_polygon(p, smooth=True, **kw)
 
 
-estado = {"piscar": nota.get("piscar") or 0, "assinatura": None, "botoes": {}}
+estado = {"piscar": nota.get("piscar") or 0, "assinatura": None, "botoes": {}, "min": False, "pos": None}
 
 
 def desenhar():
@@ -100,6 +120,8 @@ def desenhar():
     fundo, faixa, texto, detalhe = tema
     cv.delete("all")
     estado["botoes"] = {}
+    if estado["min"]:
+        return desenhar_tirinha(n, fundo, faixa, texto)
     # sombra em camadas (suave)
     for i, a in ((6, "#d6d6d6"), (4, "#c4c4c4"), (2, "#b0b0b0")):
         ret_arredondado(i, i, W + i - 2, H + i - 2, R, fill=a, outline="")
@@ -111,6 +133,8 @@ def desenhar():
     cv.create_text(16, 19, text=icone + "  " + quando_txt(n), anchor="w", fill=texto, font=(FONTE_FORTE, 10))
     xb = cv.create_text(W - 16, 18, text="✕", anchor="e", fill=texto, font=(FONTE, 11))
     estado["botoes"][xb] = concluir   # fechar aqui também tira do celular
+    mb = cv.create_text(W - 42, 16, text="—", anchor="e", fill=texto, font=(FONTE_FORTE, 11))
+    estado["botoes"][mb] = alternar_todos   # minimiza todos os post-its
     # texto da anotação
     t = n.get("texto", "")
     tam = 14 if len(t) < 50 else (12 if len(t) < 110 else 10)
@@ -126,6 +150,36 @@ def desenhar():
         botao(bx, H - 20, "+10 min", detalhe, adiar)
     # dobrinha no canto
     cv.create_polygon(W - 22, H, W, H - 22, W, H - R, W - R, H, fill=faixa, outline="")
+
+
+def desenhar_tirinha(n, fundo, faixa, texto):
+    """Post-it minimizado: só uma tirinha com o começo do texto. Toque nela mostra todos de novo."""
+    for i, a in ((3, "#c4c4c4"), (1, "#b0b0b0")):
+        ret_arredondado(i, i, W + i - 2, HM + i - 2, 12, fill=a, outline="")
+    fundo_id = ret_arredondado(0, 0, W, HM, 12, fill=faixa, outline="")
+    icone = "⏰" if n.get("disparado") else ("🔔" if n.get("quando") else "📝")
+    t = n.get("texto", "").replace("\n", " ")
+    t = t if len(t) <= 30 else t[:29] + "…"
+    tx = cv.create_text(14, HM // 2, text=icone + "  " + t, anchor="w", fill=texto, font=(FONTE, 10))
+    for item in (fundo_id, tx):
+        estado["botoes"][item] = alternar_todos
+    xb = cv.create_text(W - 14, HM // 2, text="✕", anchor="e", fill=texto, font=(FONTE, 11))
+    estado["botoes"][xb] = concluir
+
+
+def aplicar_min(sim):
+    if sim == estado["min"]:
+        return
+    if sim:
+        estado["pos"] = (raiz.winfo_x(), raiz.winfo_y())
+        estado["min"] = True
+        raiz.geometry("%dx%d+%d+%d" % (W + SOMBRA, HM + SOMBRA, raiz.winfo_screenwidth() - W - 28, 30 + POS * (HM + 6)))
+    else:
+        estado["min"] = False
+        x, y = estado["pos"] or (x0, y0)
+        raiz.geometry("%dx%d+%d+%d" % (W + SOMBRA, H + SOMBRA, x, y))
+    raiz.update_idletasks()   # a posição nova vale já (o "piscar" mexe a partir dela)
+    desenhar()
 
 
 def botao(x, y, rotulo, cor, fn):
@@ -225,14 +279,26 @@ def vigiar():
     if ass != estado["assinatura"]:
         estado["nota"], estado["assinatura"] = n, ass
         desenhar()
+    g = todos_minimizados()
+    if g != estado.get("glob"):          # só obedece quando o "minimizar todos" muda
+        estado["glob"] = g
+        aplicar_min(g and not n.get("disparado"))
+    elif n.get("disparado") and estado["min"]:
+        aplicar_min(False)               # alarme tocou: aparece inteiro
     if (n.get("piscar") or 0) > estado["piscar"]:
         estado["piscar"] = n["piscar"]
+        aplicar_min(False)   # o celular pediu para piscar: este aparece inteiro
         piscar()
     raiz.after(800, vigiar)
 
 
 estado["nota"] = nota
 estado["assinatura"] = (nota.get("texto"), nota.get("quando"), nota.get("disparado"))
+estado["glob"] = todos_minimizados()
+if estado["glob"] and not nota.get("disparado"):
+    estado["pos"] = (x0, y0)
+    estado["min"] = True
+    raiz.geometry("%dx%d+%d+%d" % (W + SOMBRA, HM + SOMBRA, raiz.winfo_screenwidth() - W - 28, 30 + POS * (HM + 6)))
 desenhar()
 aparecer()
 if nota.get("disparado"):
