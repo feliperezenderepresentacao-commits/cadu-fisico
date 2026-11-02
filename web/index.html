@@ -291,12 +291,16 @@
     x.onreadystatechange = function () {
       if (x.readyState !== 4) return;
       var d = null; try { d = JSON.parse(x.responseText); } catch (e) {}
-      if (x.status === 0) { falhas++; if (falhas >= 2) perdeuPC(); } else falhas = 0;
+      if (x.status === 0) { falhas++; if (falhas >= 5) perdeuPC(url); } else falhas = 0;
       if (cb) cb(x.status === 200 && d ? null : (x.status || "sem resposta"), d);
     };
     x.send(corpo ? JSON.stringify(corpo) : null);
   }
-  function perdeuPC() { try { if (window.Cadu) Cadu.recarregar(); } catch (e) {} }
+  function perdeuPC(url) {
+    try { var i = new Image(); i.src = "/api/diag?m=" + encodeURIComponent("desisti: 5 falhas, última " + url); } catch (e) {}
+    setTimeout(function () { try { if (window.Cadu) Cadu.recarregar(); } catch (e) {} }, 300);
+  }
+  window.onerror = function (msg, arq, linha) { try { var i = new Image(); i.src = "/api/diag?m=" + encodeURIComponent("erro JS: " + msg + " linha " + linha); } catch (e) {} };
   function apertar(alvo) { alvo.className += " apertada"; setTimeout(function () { alvo.className = alvo.className.replace(" apertada", ""); }, 140); }
 
   // ---------------------------------------------------------------- MUNDO + bichinho

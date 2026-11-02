@@ -303,6 +303,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
+        if u.path == "/api/diag":   # a tela do celular conta por que desistiu (só registra)
+            log("[web] celular: %s" % (q.get("m") or ["?"])[0][:200])
+            return self._json({"ok": True})
         if u.path == "/api/ping":  # usado pelo app para achar o PC (não revela nada)
             return self._json({"ok": True, "cadu": 1})
         if u.path in ("/instalar", "/cadu.apk"):   # instalação sem cabo: o navegador do celular baixa o app
@@ -337,6 +340,7 @@ class Handler(BaseHTTPRequestHandler):
 
         cfg = carregar_config()
         if u.path in PAGINAS:
+            log("[web] tela do Cadu aberta pelo %s" % ("cabo" if self._pelo_cabo() else self.client_address[0]))
             self._arquivo(WEB / PAGINAS[u.path], "text/html; charset=utf-8", cache=False)
         elif u.path == "/api/token":
             # Pareamento: só pelo cabo. O J3 guarda o token para usar no Wi-Fi.
