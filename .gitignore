@@ -4,3 +4,7 @@ android/app/build/
 android/local.properties
 *.apk
 __pycache__/
+agente/token.txt
+agente/noticias.json
+agente/noticias.tmp
+agente/cadu.log

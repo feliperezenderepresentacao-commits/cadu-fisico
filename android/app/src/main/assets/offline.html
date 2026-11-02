@@ -11,20 +11,22 @@
   .olho { width: 22vmin; height: 3vmin; margin: 0 9vmin; background: #3a6f7d; border-radius: 3vmin;
           -webkit-animation: respira 4s ease-in-out infinite; animation: respira 4s ease-in-out infinite; }
   @-webkit-keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
-  .msg { position: absolute; bottom: 12vh; width: 100%; text-align: center; color: #3a6f7d;
-         font: 4.2vmin/1.4 sans-serif; letter-spacing: .05em; }
   @keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
+  .msg { position: absolute; bottom: 10vmin; width: 100%; text-align: center; color: #3a6f7d;
+         font: 4.2vmin/1.5 sans-serif; letter-spacing: .05em; }
+  .dica { font-size: 3.2vmin; opacity: .7; }
 </style>
 </head>
 <body>
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
-  <div class="msg">zzz… procurando o PC</div>
+  <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica"></span></div>
 <script>
-  // Tenta reconectar ao agente do PC a cada 4 s.
-  setTimeout(function () {
-    if (window.Cadu && Cadu.recarregar) { Cadu.recarregar(); }
-    else { location.replace("http://127.0.0.1:8765/"); }
-  }, 4000);
+  // A busca (cabo e Wi-Fi) é feita pelo app; aqui só a mensagem.
+  try {
+    document.getElementById("dica").textContent = (window.Cadu && Cadu.pareado())
+      ? "pelo cabo ou pelo Wi-Fi de casa"
+      : "conecte o cabo uma vez para liberar o Wi-Fi";
+  } catch (e) {}
 </script>
 </body>
 </html>

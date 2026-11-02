@@ -20,11 +20,22 @@ Galaxy J3 (SM-J320M, Android 5.1) transformado em companheiro de mesa: rosto com
 ao conectar o cabo do J3, o Cadu acorda em ~3 s. Registro em `agente/cadu.log`.
 Para desfazer: `desativar-inicio-automatico.ps1`.
 
+### Sem cabo (Wi-Fi)
+Conecte o cabo **uma vez** com o agente rodando: o J3 recebe o token de pareamento.
+Depois disso, se o J3 e o PC estiverem no mesmo Wi-Fi, ele acha o PC sozinho (o agente anuncia
+na rede pela porta UDP 8766). Pelo Wi-Fi toda requisição exige o token.
+
+### Notícias
+Painel → deslize para a direita → **Notícias**: liga/desliga categorias, ☆/★ define aviso discreto
+(rodapé do rosto) ou chamativo (faixa + olhos surpresos). "+ Adicionar" cria categoria por palavra-chave.
+Fonte: Google Notícias (RSS); só manchete e link. Tocar no aviso abre a matéria no navegador do PC.
+
 ## Personalizar
 Edite `agente/config.json`: `vps_url` (status da VPS) e a lista `botoes`
 (tipos: `comando`, `url`, `status_vps`). Reinicie o agente.
 
 ## Fases
 - [x] Fase 1 — corpo: rosto + painel de botões via USB.
-- [ ] Fase 2 — voz: ouvir, pensar (IA via VPS), falar.
+- [x] Fase 1.5 — horizontal, início automático, notícias com avisos, modo Wi-Fi.
+- [ ] Fase 2 — voz: ouvir, pensar (IA via FreeLLMAPI na VPS), falar.
 - [ ] Fase 3 — câmera e SMS.

@@ -2,6 +2,7 @@
   "porta": 8765,
   "vps_url": "https://agendaelos.com.br",
   "dormir": { "ativo": false, "de": 0, "ate": 6 },
+  "noticias": { "intervalo_min": 15 },
   "botoes": [
     { "id": "vscode",    "icone": "💻", "rotulo": "VS Code",        "tipo": "comando", "comando": "code" },
     { "id": "claude",    "icone": "🤖", "rotulo": "Claude",         "tipo": "url",     "url": "https://claude.ai" },

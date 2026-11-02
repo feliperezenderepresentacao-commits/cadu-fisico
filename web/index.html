@@ -7,22 +7,23 @@
 <!--
   Interface do Cadu físico.
   Servida pelo agente do PC (agente/cadu_agente.py) e mostrada em tela cheia no J3.
-  Feita para a horizontal (funciona também na vertical). Medidas em vmin para
-  caber em qualquer orientação. JS em ES5: roda no WebView antigo do Android 5.1.
+  Telas: Rosto  →(toque)→  Botões  ⇄(deslizar)⇄  Notícias.
+  Feita para a horizontal. Medidas em vmin. JS em ES5 (WebView do Android 5.1).
 -->
 <style>
   :root { --olho: #8fe3ff; --fundo: #000; --texto: #e6f6fb; --suave: #8fb3bd; --apagado: #2c4a53;
-          --painel: #070d10; --botao: #111c21; --borda: #1d2e35; --ok: #6fe3a1; --erro: #ff6b6b; }
+          --painel: #070d10; --botao: #111c21; --borda: #1d2e35; --ok: #6fe3a1; --erro: #ff6b6b; --ouro: #ffd54f; }
   html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--texto); overflow: hidden;
                font-family: sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; }
 
   /* ================= ROSTO ================= */
   #rosto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-  #olhos { position: absolute; left: 50%; top: 47%; width: 112vmin; height: 50vmin; margin-left: -56vmin; margin-top: -25vmin;
+  #olhos { position: absolute; left: 50%; top: 46%; width: 112vmin; height: 50vmin; margin-left: -56vmin; margin-top: -25vmin;
            -webkit-transition: -webkit-transform .5s ease; transition: transform .5s ease; }
   .olho { position: absolute; top: 0; width: 38vmin; height: 50vmin; background: var(--olho); border-radius: 15vmin;
           overflow: hidden; box-shadow: 0 0 9vmin rgba(143,227,255,.35);
-          -webkit-transition: -webkit-transform .12s ease, background .3s; transition: transform .12s ease, background .3s; }
+          -webkit-transition: -webkit-transform .15s ease, background .3s, border-radius .3s; transition: transform .15s ease, background .3s, border-radius .3s; }
   .olho.e { left: 9vmin; }
   .olho.d { right: 9vmin; }
   .olho:before, .olho:after { content: ""; position: absolute; left: -10%; width: 120%; height: 100%; background: var(--fundo);
@@ -36,16 +37,42 @@
   #rosto.bravo .olho.d:before { -webkit-transform: translateY(40%) rotate(-16deg); transform: translateY(40%) rotate(-16deg); }
   #rosto.bravo .olho { background: #ff9a8f; box-shadow: 0 0 9vmin rgba(255,120,110,.35); }
   #rosto.sono .olho { -webkit-transform: scaleY(.12); transform: scaleY(.12); background: var(--apagado); box-shadow: none; }
+  #rosto.surpreso .olho { -webkit-transform: scale(1.12); transform: scale(1.12); border-radius: 50%; background: #fff3b0;
+                          box-shadow: 0 0 10vmin rgba(255,213,79,.45); }
 
   #aviso { position: absolute; bottom: 5vmin; width: 100%; text-align: center; font-size: 4.5vmin; letter-spacing: .04em; color: var(--apagado); }
   #aviso.alerta { color: var(--erro); }
 
+  /* aviso discreto: manchete no rodapé do rosto */
+  #rodape { position: absolute; left: 6vmin; right: 6vmin; bottom: 3.5vmin; height: 10vmin; border-radius: 5vmin;
+            background: rgba(17,28,33,.92); border: .3vmin solid var(--borda); padding: 0 4vmin; line-height: 10vmin;
+            font-size: 3.8vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            opacity: 0; -webkit-transform: translateY(14vmin); transform: translateY(14vmin);
+            -webkit-transition: opacity .4s, -webkit-transform .4s; transition: opacity .4s, transform .4s; }
+  #rodape.ver { opacity: 1; -webkit-transform: none; transform: none; }
+  #rodape b { color: var(--olho); margin-right: 2vmin; }
+
+  /* aviso urgente: faixa grande no topo */
+  #alerta { position: absolute; left: 4vmin; right: 4vmin; top: 4vmin; border-radius: 4vmin; padding: 3vmin 4vmin;
+            background: #1f1a08; border: .5vmin solid var(--ouro); display: none;
+            -webkit-animation: pulsa 1.4s ease-in-out infinite; animation: pulsa 1.4s ease-in-out infinite; }
+  #alerta.ver { display: block; }
+  body.com-alerta #olhos { top: 64%; }   /* abre espaço para a faixa */
+  #alerta .acat { font-size: 3.4vmin; color: var(--ouro); font-weight: bold; letter-spacing: .05em; }
+  #alerta .atit { font-size: 5vmin; font-weight: bold; margin-top: 1.2vmin; line-height: 1.25; max-height: 13vmin; overflow: hidden; }
+  #alerta .adica { font-size: 3vmin; color: var(--suave); margin-top: 1.2vmin; }
+  @-webkit-keyframes pulsa { 0%,100% { box-shadow: 0 0 0 rgba(255,213,79,0) } 50% { box-shadow: 0 0 6vmin rgba(255,213,79,.45) } }
+  @keyframes pulsa { 0%,100% { box-shadow: 0 0 0 rgba(255,213,79,0) } 50% { box-shadow: 0 0 6vmin rgba(255,213,79,.45) } }
+
   /* ================= PAINEL ================= */
-  #painel { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--painel); display: none; }
+  #painel { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--painel); display: none; overflow: hidden; }
   #painel.aberto { display: block; }
 
-  #topo { position: absolute; top: 0; left: 0; right: 0; height: 13vmin; padding: 0 4vmin; line-height: 13vmin; }
+  #topo { position: absolute; top: 0; left: 0; right: 0; height: 13vmin; padding: 0 4vmin; line-height: 13vmin; z-index: 2; }
   #hora { font-size: 7vmin; font-weight: bold; letter-spacing: .02em; }
+  #pontos { position: absolute; left: 50%; top: 0; margin-left: -6vmin; width: 12vmin; text-align: center; }
+  #pontos i { display: inline-block; width: 2.2vmin; height: 2.2vmin; border-radius: 50%; margin: 0 1vmin; background: var(--apagado); vertical-align: middle; }
+  #pontos i.ativo { background: var(--olho); }
   #direita { position: absolute; right: 3vmin; top: 0; height: 13vmin; }
   .chip { display: inline-block; vertical-align: middle; height: 8vmin; line-height: 8vmin; padding: 0 3.2vmin; margin-left: 2vmin;
           border-radius: 4vmin; background: var(--botao); border: .3vmin solid var(--borda); font-size: 3.6vmin; color: var(--suave); }
@@ -53,29 +80,50 @@
   .ponto.ok { background: var(--ok); } .ponto.erro { background: var(--erro); }
   #voltar { color: var(--texto); }
 
-  /* grade: preenche a tela. Horizontal = 4 colunas x 3 linhas; vertical = 3 x 4 */
-  #grade { position: absolute; top: 13vmin; left: 3vmin; right: 3vmin; bottom: 9vmin;
-           display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap;
-           -webkit-align-content: stretch; align-content: stretch; }
-  .btn { position: relative; box-sizing: border-box; width: 25%; height: 33.333%; padding: 1.2vmin; }
-  @media (orientation: portrait) { .btn { width: 33.333%; height: 25%; } }
+  /* trilho com as páginas, desliza na horizontal */
+  #trilho { position: absolute; top: 13vmin; bottom: 9vmin; left: 0; width: 200%;
+            -webkit-transition: -webkit-transform .3s ease; transition: transform .3s ease; }
+  .pagina { position: absolute; top: 0; bottom: 0; width: 50%; padding: 0 3vmin; }
+  .pagina.p2 { left: 50%; }
 
-  /* conteúdo do botão: ícone + nome, centralizados em coluna */
-  .cx { position: relative; height: 100%; box-sizing: border-box; border-radius: 4.5vmin; background: var(--botao);
-        border: .3vmin solid var(--borda); overflow: hidden;
+  /* --- página 1: botões (4 x 3) --- */
+  #grade { height: 100%; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+  .btn { position: relative; width: 25%; height: 33.333%; padding: 1.2vmin; }
+  .cx { position: relative; height: 100%; border-radius: 4.5vmin; background: var(--botao); border: .3vmin solid var(--borda); overflow: hidden;
         display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column;
         -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
-        -webkit-transition: -webkit-transform .08s, background .2s, border-color .2s;
-        transition: transform .08s, background .2s, border-color .2s; }
+        -webkit-transition: -webkit-transform .08s, background .2s, border-color .2s; transition: transform .08s, background .2s, border-color .2s; }
   .faixa { position: absolute; left: 0; top: 0; bottom: 0; width: 1.4vmin; opacity: .85; }
-  .ic { width: 12vmin; height: 12vmin; border-radius: 50%; text-align: center; line-height: 12vmin; font-size: 7vmin;
-        -webkit-flex-shrink: 0; flex-shrink: 0; }
-  .rot { margin-top: 1.6vmin; max-width: 90%; text-align: center; font-size: 3.6vmin; font-weight: bold;
-         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
+  .ic { width: 12vmin; height: 12vmin; border-radius: 50%; text-align: center; line-height: 12vmin; font-size: 7vmin; -webkit-flex-shrink: 0; flex-shrink: 0; }
+  .rot { margin-top: 1.6vmin; max-width: 90%; text-align: center; font-size: 3.6vmin; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn.apertado .cx { -webkit-transform: scale(.93); transform: scale(.93); }
   .btn.ok .cx { background: #10331f; border-color: var(--ok); }
   .btn.erro .cx { background: #3a1212; border-color: var(--erro); }
+
+  /* --- página 2: notícias (configuração) --- */
+  #notCab { height: 11vmin; padding: 1.2vmin; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  #notCab h2 { margin: 0 3vmin 0 0; font-size: 5vmin; white-space: nowrap; }
+  #novaCat { -webkit-flex: 1; flex: 1; height: 8vmin; border-radius: 4vmin; border: .3vmin solid var(--borda); background: var(--botao);
+             color: var(--texto); font-size: 3.6vmin; padding: 0 3.5vmin; outline: none; -webkit-user-select: text; user-select: text; }
+  #addCat { margin-left: 2vmin; color: var(--texto); }
+  #cats { position: absolute; top: 11vmin; bottom: 0; left: 3vmin; right: 3vmin; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .cat { float: left; width: 50%; padding: 1.2vmin; }
+  .cat .cx2 { position: relative; height: 15vmin; border-radius: 4vmin; background: var(--botao); border: .3vmin solid var(--borda);
+              padding: 2.2vmin 34vmin 0 3.5vmin; }
+  .cat.ligada .cx2 { border-color: #2f6b7a; }
+  .cat .nome { font-size: 4vmin; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat .ult { font-size: 2.8vmin; color: var(--suave); margin-top: 1.2vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat .acoes { position: absolute; right: 2.5vmin; top: 0; bottom: 0; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .estrela { width: 9vmin; height: 9vmin; line-height: 9vmin; text-align: center; font-size: 5.5vmin; color: var(--apagado); }
+  .estrela.on { color: var(--ouro); }
+  .x { width: 7vmin; height: 9vmin; line-height: 9vmin; text-align: center; font-size: 4vmin; color: var(--suave); }
+  .chave { position: relative; width: 14vmin; height: 8vmin; border-radius: 4vmin; background: var(--apagado); margin-left: 1.5vmin;
+           -webkit-transition: background .2s; transition: background .2s; }
+  .chave:after { content: ""; position: absolute; top: .9vmin; left: .9vmin; width: 6.2vmin; height: 6.2vmin; border-radius: 50%; background: #cfe3e8;
+                 -webkit-transition: -webkit-transform .2s; transition: transform .2s; }
+  .chave.on { background: #2aa3c2; }
+  .chave.on:after { -webkit-transform: translateX(6vmin); transform: translateX(6vmin); }
+  .legenda { clear: both; padding: 2vmin 1.2vmin 3vmin; font-size: 3vmin; color: var(--suave); }
 
   #msg { position: absolute; left: 4vmin; right: 4vmin; bottom: 0; height: 9vmin; line-height: 9vmin; text-align: center;
          font-size: 3.8vmin; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -86,32 +134,45 @@
 <div id="rosto">
   <div id="olhos"><div class="olho e"></div><div class="olho d"></div></div>
   <div id="aviso"></div>
+  <div id="rodape"></div>
+  <div id="alerta"><div class="acat"></div><div class="atit"></div><div class="adica">toque para abrir no PC</div></div>
 </div>
 
 <div id="painel">
   <div id="topo">
     <span id="hora">--:--</span>
+    <span id="pontos"><i class="ativo"></i><i></i></span>
     <span id="direita">
+      <span class="chip" id="via">🔌 Cabo</span>
       <span class="chip" id="vps"><span class="ponto"></span>VPS</span>
       <span class="chip" id="voltar">👀 Rosto</span>
     </span>
   </div>
-  <div id="grade"></div>
+  <div id="trilho">
+    <div class="pagina p1"><div id="grade"></div></div>
+    <div class="pagina p2">
+      <div id="notCab">
+        <h2>📰 Notícias</h2>
+        <input id="novaCat" type="text" maxlength="60" placeholder="Nova categoria (palavra-chave)">
+        <span class="chip" id="addCat">+ Adicionar</span>
+      </div>
+      <div id="cats"></div>
+    </div>
+  </div>
   <div id="msg"></div>
 </div>
 
 <script>
 (function () {
-  var rosto = document.getElementById("rosto"),
-      olhos = document.getElementById("olhos"),
-      aviso = document.getElementById("aviso"),
-      painel = document.getElementById("painel"),
-      grade = document.getElementById("grade"),
-      msg = document.getElementById("msg");
+  function $(id) { return document.getElementById(id); }
+  var rosto = $("rosto"), olhos = $("olhos"), aviso = $("aviso"), painel = $("painel"),
+      grade = $("grade"), msg = $("msg"), trilho = $("trilho"), rodape = $("rodape"), alerta = $("alerta");
 
+  // Token: presente na URL quando conectado pelo Wi-Fi; pelo cabo não precisa.
+  var T = (location.search.match(/[?&]t=([^&]+)/) || [])[1] || "";
   var CORES = ["#4fc3f7", "#b388ff", "#69f0ae", "#ffd54f", "#ff8a65", "#f06292",
                "#4db6ac", "#9575cd", "#aed581", "#ffb74d", "#90a4ae", "#e57373"];
-  var humorBase = "", humorTemp = null, timerOcioso = null, OCIOSO_MS = 20000;
+  var humorBase = "", humorTemp = null, timerOcioso = null, OCIOSO_MS = 25000, pagina = 0, falhas = 0;
 
   // ---------- utilidades ----------
   function vibrar(ms) { try { if (window.Cadu) Cadu.vibrar(ms); } catch (e) {} }
@@ -120,35 +181,33 @@
     x.open(metodo, url, true);
     x.timeout = 15000;
     x.setRequestHeader("Content-Type", "application/json");
+    if (T) x.setRequestHeader("X-Cadu-Token", decodeURIComponent(T));
     x.onreadystatechange = function () {
       if (x.readyState !== 4) return;
       var dados = null;
       try { dados = JSON.parse(x.responseText); } catch (e) {}
+      if (x.status === 0) { falhas++; if (falhas >= 2) perdeuPC(); } else { falhas = 0; }
       cb(x.status === 200 && dados ? null : (x.status || "sem resposta"), dados);
     };
     x.send(corpo ? JSON.stringify(corpo) : null);
   }
+  function perdeuPC() { try { if (window.Cadu) Cadu.recarregar(); } catch (e) {} }
   function aleatorio(a, b) { return a + Math.random() * (b - a); }
   function rgba(hex, a) {
     var n = parseInt(hex.replace("#", ""), 16);
     return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")";
   }
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
   // ---------- rosto ----------
   function aplicarHumor() { rosto.className = humorTemp || humorBase; }
   function humorPassageiro(h, ms) {
     humorTemp = h; aplicarHumor();
-    setTimeout(function () { humorTemp = null; aplicarHumor(); }, ms);
+    setTimeout(function () { if (humorTemp === h) { humorTemp = null; aplicarHumor(); } }, ms);
   }
-  function fecharOlhos() {
-    rosto.className = (humorBase ? humorBase + " " : "") + "piscar";
-    setTimeout(aplicarHumor, 130);
-  }
+  function fecharOlhos() { rosto.className = (humorBase ? humorBase + " " : "") + "piscar"; setTimeout(aplicarHumor, 130); }
   function piscar() {
-    if (humorBase !== "sono" && !humorTemp) {
-      fecharOlhos();
-      if (Math.random() < .25) setTimeout(fecharOlhos, 260);
-    }
+    if (humorBase !== "sono" && !humorTemp) { fecharOlhos(); if (Math.random() < .25) setTimeout(fecharOlhos, 260); }
     setTimeout(piscar, aleatorio(2200, 6000));
   }
   function olharEmVolta() {
@@ -159,80 +218,208 @@
     setTimeout(olharEmVolta, aleatorio(1500, 4500));
   }
 
-  // ---------- painel ----------
+  // ---------- painel e páginas ----------
   function abrirPainel() {
     humorPassageiro("feliz", 500);
     vibrar(25);
-    setTimeout(function () { painel.className = "aberto"; reiniciarOcioso(); }, 250);
+    setTimeout(function () { painel.className = "aberto"; irPagina(0); reiniciarOcioso(); }, 250);
   }
-  function fecharPainel() { painel.className = ""; msg.textContent = ""; }
-  function reiniciarOcioso() {
-    clearTimeout(timerOcioso);
-    timerOcioso = setTimeout(fecharPainel, OCIOSO_MS);
-  }
-  window.aoVoltar = function () { if (painel.className) fecharPainel(); };
+  function fecharPainel() { painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} }
+  function reiniciarOcioso() { clearTimeout(timerOcioso); timerOcioso = setTimeout(fecharPainel, OCIOSO_MS); }
+  window.aoVoltar = function () { if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
 
+  function irPagina(p) {
+    pagina = p;
+    var t = "translateX(" + (-50 * p) + "%)";
+    trilho.style.webkitTransform = t; trilho.style.transform = t;
+    var bolas = $("pontos").getElementsByTagName("i");
+    for (var i = 0; i < bolas.length; i++) bolas[i].className = i === p ? "ativo" : "";
+    if (p === 1) carregarCategorias();
+  }
+
+  // deslizar: arrastar para a esquerda/direita troca de página
+  var toque = null, arrastou = false;
+  painel.addEventListener("touchstart", function (e) {
+    var t = e.touches[0]; toque = { x: t.clientX, y: t.clientY }; arrastou = false;
+  });
+  painel.addEventListener("touchmove", function (e) {
+    if (!toque) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientX - toque.x) > 12) arrastou = true;
+  });
+  painel.addEventListener("touchend", function (e) {
+    if (!toque) return;
+    var t = e.changedTouches[0], dx = t.clientX - toque.x, dy = t.clientY - toque.y;
+    toque = null;
+    reiniciarOcioso();
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0 && pagina < 1) { irPagina(pagina + 1); vibrar(15); }
+      else if (dx > 0 && pagina > 0) { irPagina(pagina - 1); vibrar(15); }
+    }
+  });
+  $("pontos").addEventListener("click", function (ev) { ev.stopPropagation(); irPagina(pagina === 0 ? 1 : 0); });
+
+  // ---------- página 1: botões ----------
   function montarBotoes(lista) {
     grade.innerHTML = "";
     for (var i = 0; i < lista.length; i++) (function (b, i) {
       var cor = b.cor || CORES[i % CORES.length];
-      var el = document.createElement("div");
-      el.className = "btn";
-      el.innerHTML = '<div class="cx"><div class="faixa"></div><div class="ic"></div><div class="rot"></div></div>';
-      var cx = el.firstChild;
-      cx.childNodes[0].style.background = cor;
-      cx.childNodes[1].style.background = rgba(cor, .16);
-      cx.childNodes[1].textContent = b.icone || "•";
-      cx.childNodes[2].textContent = b.rotulo || b.id;
-      el.addEventListener("click", function (ev) { ev.stopPropagation(); acionar(b, el); });
-      grade.appendChild(el);
+      var bt = el("div", "btn"), cx = el("div", "cx"), fx = el("div", "faixa"), ic = el("div", "ic", b.icone || "•"), rt = el("div", "rot", b.rotulo || b.id);
+      fx.style.background = cor; ic.style.background = rgba(cor, .16);
+      cx.appendChild(fx); cx.appendChild(ic); cx.appendChild(rt); bt.appendChild(cx);
+      bt.addEventListener("click", function (ev) { ev.stopPropagation(); if (!arrastou) acionar(b, bt); });
+      grade.appendChild(bt);
     })(lista[i], i);
   }
-  function acionar(b, el) {
-    reiniciarOcioso();
-    vibrar(30);
-    el.className = "btn apertado";
+  function acionar(b, bt) {
+    reiniciarOcioso(); vibrar(30);
+    bt.className = "btn apertado";
     msg.textContent = b.rotulo + "…";
     pedir("POST", "/api/acao", { id: b.id }, function (erro, r) {
       var ok = !erro && r && r.ok;
-      el.className = "btn " + (ok ? "ok" : "erro");
+      bt.className = "btn " + (ok ? "ok" : "erro");
       msg.textContent = (r && r.msg) || (ok ? "Feito." : "Falhou (" + erro + ")");
       if (!ok) vibrar(200);
-      setTimeout(function () { el.className = "btn"; }, 900);
+      setTimeout(function () { bt.className = "btn"; }, 900);
     });
   }
 
-  // ---------- status (relógio + VPS) ----------
+  // ---------- página 2: notícias ----------
+  function carregarCategorias() {
+    pedir("GET", "/api/noticias/config", null, function (erro, lista) { if (!erro && lista) montarCategorias(lista); });
+  }
+  function montarCategorias(lista) {
+    var cats = $("cats"); cats.innerHTML = "";
+    for (var i = 0; i < lista.length; i++) (function (c) {
+      var card = el("div", "cat" + (c.ativa ? " ligada" : "")), cx = el("div", "cx2");
+      cx.appendChild(el("div", "nome", c.nome));
+      cx.appendChild(el("div", "ult", c.ativa ? (c.ultima || "buscando manchetes…") : "desligada"));
+      var acoes = el("div", "acoes");
+      if (c.custom) {
+        var x = el("div", "x", "✕");
+        x.addEventListener("click", function (ev) { ev.stopPropagation(); alterar("/api/noticias/remover", { id: c.id }, "Categoria removida."); });
+        acoes.appendChild(x);
+      }
+      var est = el("div", "estrela" + (c.urgente ? " on" : ""), c.urgente ? "★" : "☆");
+      est.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        alterar("/api/noticias/alterar", { id: c.id, urgente: !c.urgente },
+                !c.urgente ? "⭐ " + c.nome + ": aviso chamativo." : c.nome + ": aviso discreto.");
+      });
+      var ch = el("div", "chave" + (c.ativa ? " on" : ""));
+      ch.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        alterar("/api/noticias/alterar", { id: c.id, ativa: !c.ativa }, c.nome + (!c.ativa ? ": ligada." : ": desligada."));
+      });
+      acoes.appendChild(est); acoes.appendChild(ch); cx.appendChild(acoes); card.appendChild(cx); cats.appendChild(card);
+    })(lista[i]);
+    cats.appendChild(el("div", "legenda", "Chave = receber avisos da categoria.  ☆/★ = aviso discreto (rodapé) ou chamativo (faixa + olhos surpresos)."));
+  }
+  function alterar(url, corpo, texto) {
+    reiniciarOcioso(); vibrar(20);
+    pedir("POST", url, corpo, function (erro, r) {
+      if (!erro && r && r.categorias) { montarCategorias(r.categorias); msg.textContent = r.ok ? texto : "Não foi possível."; }
+      else msg.textContent = "Falhou (" + erro + ")";
+    });
+  }
+  function adicionarCategoria() {
+    var campo = $("novaCat"), nome = campo.value.replace(/^\s+|\s+$/g, "");
+    if (nome.length < 2) { msg.textContent = "Digite uma palavra-chave (ex.: licitações)."; return; }
+    campo.value = ""; campo.blur();
+    alterar("/api/noticias/nova", { nome: nome }, "Categoria \"" + nome + "\" criada e ligada.");
+  }
+  $("addCat").addEventListener("click", function (ev) { ev.stopPropagation(); adicionarCategoria(); });
+  $("novaCat").addEventListener("keydown", function (ev) { reiniciarOcioso(); if (ev.keyCode === 13) adicionarCategoria(); });
+  $("novaCat").addEventListener("click", function (ev) { ev.stopPropagation(); });
+
+  // ---------- avisos de notícias ----------
+  var desde = -1, filaDiscreta = [], rodando = false, urgenteAtual = null, timerUrgente = null;
+
+  function buscarAvisos() {
+    pedir("GET", "/api/avisos?desde=" + desde, null, function (erro, r) {
+      if (!erro && r) {
+        desde = r.seq;
+        for (var i = 0; i < r.itens.length; i++) {
+          var n = r.itens[i];
+          if (n.urgente) mostrarUrgente(n); else filaDiscreta.push(n);
+        }
+        proximoDiscreto();
+      }
+      setTimeout(buscarAvisos, 20000);
+    });
+  }
+  function proximoDiscreto() {
+    if (rodando || !filaDiscreta.length) return;
+    rodando = true;
+    var n = filaDiscreta.shift();
+    if (painel.className) msg.textContent = "📰 " + n.catNome + " · " + n.titulo;
+    rodape.innerHTML = ""; rodape.appendChild(el("b", null, n.catNome)); rodape.appendChild(document.createTextNode(n.titulo));
+    rodape.k = n.k; rodape.className = "ver"; vibrar(30);
+    setTimeout(function () { rodape.className = ""; setTimeout(function () { rodando = false; proximoDiscreto(); }, 600); }, 14000);
+  }
+  function mostrarUrgente(n) {
+    urgenteAtual = n;
+    alerta.firstChild.textContent = "⭐ " + n.catNome.toUpperCase() + (n.fonte ? " · " + n.fonte : "");
+    alerta.childNodes[1].textContent = n.titulo;
+    alerta.className = "ver"; document.body.className = "com-alerta";
+    if (painel.className) msg.textContent = "⭐ " + n.catNome + " · " + n.titulo;
+    humorPassageiro("surpreso", 3000);
+    try { if (window.Cadu) Cadu.vibrarPadrao(); } catch (e) {}
+    clearTimeout(timerUrgente);
+    timerUrgente = setTimeout(fecharAlerta, 90000);
+  }
+  function fecharAlerta() { alerta.className = ""; document.body.className = ""; urgenteAtual = null; clearTimeout(timerUrgente); }
+  function abrirNoPC(k) {
+    if (!k) return;
+    vibrar(30);
+    pedir("POST", "/api/abrir", { k: k }, function (erro, r) {
+      aviso.className = ""; aviso.textContent = (r && r.msg) || "Falhou.";
+      setTimeout(function () { aviso.textContent = ""; }, 4000);
+    });
+  }
+  rodape.addEventListener("click", function (ev) { ev.stopPropagation(); abrirNoPC(rodape.k); rodape.className = ""; });
+  alerta.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+    if (urgenteAtual) abrirNoPC(urgenteAtual.k);
+    fecharAlerta();
+  });
+
+  // ---------- status (relógio, VPS, conexão) ----------
   function relogio() {
     var d = new Date(), h = d.getHours(), m = d.getMinutes();
-    document.getElementById("hora").textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+    $("hora").textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
     setTimeout(relogio, 10000);
   }
   function status() {
     pedir("GET", "/api/status", null, function (erro, r) {
-      var vps = r && r.vps, ponto = document.querySelector("#vps .ponto");
-      if (erro || !r) {
-        try { if (window.Cadu) Cadu.recarregar(); } catch (e) {}
-      } else if (vps && vps.ok === false) {
-        humorBase = "bravo"; aviso.textContent = "VPS fora do ar!"; aviso.className = "alerta"; ponto.className = "ponto erro";
-      } else {
-        humorBase = r.dormir ? "sono" : "";
-        aviso.textContent = r.dormir ? "zzz" : ""; aviso.className = "";
-        ponto.className = "ponto" + (vps ? " ok" : "");
+      if (!erro && r) {
+        var vps = r.vps, ponto = document.querySelector("#vps .ponto");
+        $("via").textContent = r.via === "wifi" ? "📶 Wi-Fi" : "🔌 Cabo";
+        if (vps && vps.ok === false) {
+          humorBase = "bravo"; aviso.textContent = "VPS fora do ar!"; aviso.className = "alerta"; ponto.className = "ponto erro";
+        } else {
+          humorBase = r.dormir ? "sono" : "";
+          if (aviso.className === "alerta") { aviso.textContent = ""; aviso.className = ""; }
+          ponto.className = "ponto" + (vps ? " ok" : "");
+        }
+        aplicarHumor();
       }
-      aplicarHumor();
       setTimeout(status, 30000);
+    });
+  }
+  function parearSeNoCabo() {
+    if (T) return;  // já está no Wi-Fi
+    pedir("GET", "/api/token", null, function (erro, r) {
+      if (!erro && r && r.token) { try { if (window.Cadu) Cadu.parear(r.token, (r.ips || [])[0] || ""); } catch (e) {} }
     });
   }
 
   // ---------- início ----------
   rosto.addEventListener("click", abrirPainel);
   painel.addEventListener("click", reiniciarOcioso);
-  document.getElementById("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(20); fecharPainel(); });
-  pedir("GET", "/api/botoes", null, function (erro, lista) {
-    if (!erro && lista) montarBotoes(lista);
-  });
-  relogio(); status(); piscar(); olharEmVolta();
+  $("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(20); fecharPainel(); });
+  pedir("GET", "/api/botoes", null, function (erro, lista) { if (!erro && lista) montarBotoes(lista); });
+  relogio(); status(); piscar(); olharEmVolta(); parearSeNoCabo(); buscarAvisos();
 })();
 </script>
 </body>

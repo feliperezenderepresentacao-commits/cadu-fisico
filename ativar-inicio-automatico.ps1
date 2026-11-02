@@ -25,6 +25,16 @@ $s.WorkingDirectory = Split-Path $script
 $s.Description = "Agente do Cadu fisico (J3)"
 $s.Save()
 
+# Libera a porta 8765 no firewall do Windows (modo Wi-Fi). Pede permissao de administrador (clique em "Sim").
+$regra = "Remove-NetFirewallRule -DisplayName 'Cadu agente' -ErrorAction SilentlyContinue; " +
+         "New-NetFirewallRule -DisplayName 'Cadu agente' -Direction Inbound -Protocol TCP -LocalPort 8765 -Action Allow -Profile Any | Out-Null"
+try {
+    Start-Process powershell -Verb RunAs -Wait -ArgumentList "-NoProfile -Command `"$regra`""
+    Write-Host "Firewall liberado para o modo Wi-Fi." -ForegroundColor Green
+} catch {
+    Write-Host "Firewall nao foi liberado (permissao negada). O cabo funciona; o Wi-Fi pode nao funcionar." -ForegroundColor Yellow
+}
+
 # Para qualquer agente que esteja rodando e liga a versao escondida agora
 Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match "cadu_agente\.py" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 Start-Sleep 1
