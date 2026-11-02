@@ -8,3 +8,4 @@ agente/token.txt
 agente/noticias.json
 agente/noticias.tmp
 agente/cadu.log
+android/app/cadu.keystore

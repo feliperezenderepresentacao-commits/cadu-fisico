@@ -24,7 +24,15 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      - name: Chave de assinatura (segredo)
+        env:
+          CADU_KEYSTORE_B64: ${{ secrets.CADU_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$CADU_KEYSTORE_B64" ]; then echo "$CADU_KEYSTORE_B64" | base64 -d > android/app/cadu.keystore; fi
+
       - name: Compilar
+        env:
+          CADU_KEY_PASS: ${{ secrets.CADU_KEY_PASS }}
         run: gradle -p android assembleDebug --no-daemon
 
       - name: Renomear

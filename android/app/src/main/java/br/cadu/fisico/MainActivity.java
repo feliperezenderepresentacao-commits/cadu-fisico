@@ -4,11 +4,14 @@ import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.provider.Settings;
+import android.net.wifi.WifiInfo;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -219,6 +222,18 @@ public class MainActivity extends Activity {
         web.evaluateJavascript("window.aoVoltar && window.aoVoltar()", null);
     }
 
+    private void abrir(final String acao) {
+        web.post(new Runnable() {
+            public void run() {
+                try {
+                    Intent i = new Intent(acao);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                } catch (Exception ignored) { }
+            }
+        });
+    }
+
     // ------------------------------------------------------------------ ponte JS
     /** Funções que a interface (HTML) pode chamar: Cadu.vibrar(30), Cadu.parear(...) */
     class Ponte {
@@ -235,7 +250,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.3-noticias-wifi"; }
+        public String versao() { return "0.4-ajustes"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -248,6 +263,41 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public boolean pareado() { return prefs.getString("token", null) != null; }
+
+        /** Abre a tela de Wi-Fi do Android (o botão Home volta para o Cadu). */
+        @JavascriptInterface
+        public void abrirWifi() { abrir(Settings.ACTION_WIFI_SETTINGS); }
+
+        /** Abre as configurações gerais do Android. */
+        @JavascriptInterface
+        public void abrirAjustes() { abrir(Settings.ACTION_SETTINGS); }
+
+        /** Situação da rede do celular, em JSON, para a tela de Ajustes. */
+        @JavascriptInterface
+        public String infoRede() {
+            String ssid = "", ip = "";
+            boolean ligado = false;
+            try {
+                WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wm != null) {
+                    ligado = wm.isWifiEnabled();
+                    WifiInfo wi = wm.getConnectionInfo();
+                    if (wi != null) {
+                        ssid = wi.getSSID() == null ? "" : wi.getSSID().replace("\"", "");
+                        if (ssid.contains("unknown")) ssid = "";
+                        int n = wi.getIpAddress();
+                        if (n != 0) ip = (n & 255) + "." + (n >> 8 & 255) + "." + (n >> 16 & 255) + "." + (n >> 24 & 255);
+                    }
+                }
+            } catch (Exception ignored) { }
+            return "{\"wifiLigado\":" + ligado + ",\"rede\":\"" + ssid.replace("\\", "") + "\",\"ip\":\"" + ip
+                    + "\",\"pareado\":" + (prefs.getString("token", null) != null)
+                    + ",\"ipPC\":\"" + (prefs.getString("ip", "") == null ? "" : prefs.getString("ip", "")) + "\"}";
+        }
+
+        /** Esquece o pareamento (o próximo cabo pareia de novo). */
+        @JavascriptInterface
+        public void esquecerPareamento() { prefs.edit().remove("token").remove("ip").apply(); }
 
         /** A interface perdeu o agente: volta a procurar (cabo ou Wi-Fi). */
         @JavascriptInterface

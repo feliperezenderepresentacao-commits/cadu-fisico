@@ -5,28 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Cadu</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
   .rosto { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: -webkit-flex; display: flex;
            -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
   .olho { width: 22vmin; height: 3vmin; margin: 0 9vmin; background: #3a6f7d; border-radius: 3vmin;
           -webkit-animation: respira 4s ease-in-out infinite; animation: respira 4s ease-in-out infinite; }
   @-webkit-keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
   @keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
-  .msg { position: absolute; bottom: 10vmin; width: 100%; text-align: center; color: #3a6f7d;
-         font: 4.2vmin/1.5 sans-serif; letter-spacing: .05em; }
-  .dica { font-size: 3.2vmin; opacity: .7; }
+  .msg { position: absolute; bottom: 12vmin; left: 0; right: 0; text-align: center; color: #3a6f7d;
+         font-size: 4.2vmin; line-height: 1.5; letter-spacing: .05em; padding: 0 4vmin; }
+  .dica { font-size: 3.2vmin; opacity: .8; }
+  .barra { position: absolute; top: 3vmin; right: 3vmin; }
+  .bt { display: inline-block; margin-left: 2vmin; height: 9vmin; line-height: 9vmin; padding: 0 4vmin; border-radius: 4.5vmin;
+        background: #111c21; border: .3vmin solid #1d2e35; color: #cfe3e8; font-size: 3.6vmin; }
+  .bt:active { background: #1d3540; }
 </style>
 </head>
 <body>
+  <div class="barra">
+    <span class="bt" id="wifi">📶 Wi-Fi</span>
+    <span class="bt" id="ajustes">⚙️ Ajustes</span>
+  </div>
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
   <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica"></span></div>
 <script>
-  // A busca (cabo e Wi-Fi) é feita pelo app; aqui só a mensagem.
-  try {
-    document.getElementById("dica").textContent = (window.Cadu && Cadu.pareado())
-      ? "pelo cabo ou pelo Wi-Fi de casa"
-      : "conecte o cabo uma vez para liberar o Wi-Fi";
-  } catch (e) {}
+  // A busca (cabo e Wi-Fi) é feita pelo app; aqui só a mensagem e os atalhos.
+  function info() {
+    try {
+      var r = JSON.parse(Cadu.infoRede()), d;
+      if (!r.pareado) d = "conecte o cabo uma vez para liberar o Wi-Fi";
+      else if (!r.wifiLigado) d = "Wi-Fi do celular desligado — toque em 📶 Wi-Fi";
+      else if (!r.rede) d = "Wi-Fi sem rede — toque em 📶 Wi-Fi e escolha a de casa";
+      else d = "na rede " + r.rede + " · aguardando o PC (agente ligado?)";
+      document.getElementById("dica").textContent = d;
+    } catch (e) {}
+    setTimeout(info, 3000);
+  }
+  document.getElementById("wifi").onclick = function () { try { Cadu.abrirWifi(); } catch (e) {} };
+  document.getElementById("ajustes").onclick = function () { try { Cadu.abrirAjustes(); } catch (e) {} };
+  info();
 </script>
 </body>
 </html>

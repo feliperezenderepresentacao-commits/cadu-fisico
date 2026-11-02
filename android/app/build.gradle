@@ -10,13 +10,26 @@ android {
         applicationId "br.cadu.fisico"
         minSdk 21          // J3 2016 roda Android 5.1 (API 22)
         targetSdk 34
-        versionCode 3
-        versionName "0.3-noticias-wifi"
+        versionCode 4
+        versionName "0.4-ajustes"
+    }
+
+    // Chave FIXA: toda versão sai com a mesma assinatura, então o J3 aceita
+    // atualizar por cima. A chave vem dos segredos do GitHub (nunca fica no código).
+    def chave = file("cadu.keystore")
+    signingConfigs {
+        fixa {
+            storeFile chave
+            storePassword System.getenv("CADU_KEY_PASS") ?: ""
+            keyAlias "cadu"
+            keyPassword System.getenv("CADU_KEY_PASS") ?: ""
+        }
     }
 
     buildTypes {
         debug {
             minifyEnabled false
+            if (chave.exists()) signingConfig signingConfigs.fixa
         }
     }
 
