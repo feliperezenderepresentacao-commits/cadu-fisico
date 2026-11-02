@@ -246,6 +246,37 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** IP do PC: o do "grito" na rede, ou o último salvo (espera o grito até 8 s). */
+    private String ipDoPC() {
+        for (int i = 0; i < 16 && ipBeacon == null; i++) dormir(500);
+        String ip = ipBeacon != null ? ipBeacon : prefs.getString("ip", null);
+        return (ip != null && ping("http://" + ip + ":" + PORTA + "/api/ping")) ? ip : null;
+    }
+
+    private static String postar(String endereco, String json) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(endereco).openConnection();
+            c.setConnectTimeout(3000); c.setReadTimeout(5000);
+            c.setRequestMethod("POST"); c.setDoOutput(true);
+            c.setRequestProperty("Content-Type", "application/json");
+            c.getOutputStream().write(json.getBytes("UTF-8"));
+            InputStream in = c.getInputStream();
+            java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[1024]; int n;
+            while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+            return b.toString("UTF-8");
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
+    private void js(final String codigo) {
+        web.post(new Runnable() { public void run() { web.evaluateJavascript("window." + codigo.replaceFirst("^", ""), null); } });
+    }
+
     // ------------------------------------------------------------------ ponte JS
     /** Funções que a interface (HTML) pode chamar: Cadu.vibrar(30), Cadu.parear(...) */
     class Ponte {
@@ -262,7 +293,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.7-voz"; }
+        public String versao() { return "0.7.1-voz"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -350,6 +381,39 @@ public class MainActivity extends Activity {
         /** Esquece o pareamento (o próximo cabo pareia de novo). */
         @JavascriptInterface
         public void esquecerPareamento() { prefs.edit().remove("token").remove("ip").apply(); }
+
+        /** Pareamento sem cabo, passo 1: pede ao PC (achado pelo "grito" na rede) para mostrar um código. */
+        @JavascriptInterface
+        public void pedirCodigo() {
+            new Thread(new Runnable() { public void run() {
+                String ip = ipDoPC();
+                if (ip == null) { js("aoParear('erro','Não achei o PC na rede. O Wi-Fi do celular está na rede de casa e o agente ligado?')"); return; }
+                String r = postar("http://" + ip + ":" + PORTA + "/api/parear/pedir", "{}");
+                if (r != null && r.contains("\"ok\": true")) { prefs.edit().putString("ip", ip).apply(); js("aoParear('pedido','Olhe a tela do PC: apareceu um código de 6 números.')"); }
+                else js("aoParear('erro','O PC não respondeu (" + ip + "). Atualize o agente do PC.')");
+            } }).start();
+        }
+
+        /** Pareamento sem cabo, passo 2: manda o código e guarda o token. */
+        @JavascriptInterface
+        public void enviarCodigo(final String codigo) {
+            new Thread(new Runnable() { public void run() {
+                String ip = ipDoPC();
+                if (ip == null) { js("aoParear('erro','Não achei o PC na rede.')"); return; }
+                String c = codigo == null ? "" : codigo.replaceAll("[^0-9]", "");
+                String r = postar("http://" + ip + ":" + PORTA + "/api/parear", "{\"codigo\": \"" + c + "\"}");
+                java.util.regex.Matcher m = r == null ? null : java.util.regex.Pattern.compile("\"token\": \"([^\"]+)\"").matcher(r);
+                if (m != null && m.find()) {
+                    prefs.edit().putString("token", m.group(1)).putString("ip", ip).apply();
+                    js("aoParear('ok','Pareado! Conectando…')");
+                    if (prefs.getBoolean("voz", true)) OuvidoService.ligar(MainActivity.this, true);
+                } else {
+                    String msg = "Código errado ou vencido.";
+                    if (r != null && r.contains("vencido")) msg = "Código vencido. Peça outro.";
+                    js("aoParear('erro','" + msg + "')");
+                }
+            } }).start();
+        }
 
         /** Fase 2: liga/desliga o ouvido (microfone repassado ao PC). */
         @JavascriptInterface

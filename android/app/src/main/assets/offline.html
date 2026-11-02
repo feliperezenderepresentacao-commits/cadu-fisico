@@ -19,12 +19,25 @@
   .bt { display: inline-block; margin-left: 2vmin; height: 9vmin; line-height: 9vmin; padding: 0 4vmin; border-radius: 4.5vmin;
         background: #111c21; border: .3vmin solid #1d2e35; color: #cfe3e8; font-size: 3.6vmin; }
   .bt:active { background: #1d3540; }
+  #par { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.92); text-align: center; padding-top: 8vmin; color: #cfe3e8; }
+  #par.ver { display: block; }
+  #par h2 { color: #ffd166; font-size: 5vmin; margin: 0 0 3vmin; }
+  #parMsg { font-size: 3.8vmin; min-height: 10vmin; padding: 0 6vmin; }
+  #cod { width: 46vmin; font-size: 8vmin; letter-spacing: 2vmin; text-align: center; background: #111c21; color: #fff; border: .4vmin solid #3a6f7d; border-radius: 2vmin; padding: 1vmin; }
+  .bt.ok { background: #06d6a0; color: #0d1020; border-color: #06d6a0; }
 </style>
 </head>
 <body>
   <div class="barra">
+    <span class="bt" id="parear" style="display:none">🔑 Parear</span>
     <span class="bt" id="wifi">📶 Wi-Fi</span>
     <span class="bt" id="ajustes">⚙️ Ajustes</span>
+  </div>
+  <div id="par">
+    <h2>Parear com o PC sem cabo</h2>
+    <div id="parMsg">Procurando o PC na rede…</div>
+    <input id="cod" type="tel" maxlength="6" placeholder="000000"><br><br>
+    <span class="bt ok" id="confirmar">Confirmar</span> <span class="bt" id="outro">Pedir outro código</span> <span class="bt" id="fechar">Fechar</span>
   </div>
   <div class="rosto"><div class="olho"></div><div class="olho"></div></div>
   <div class="msg">zzz… procurando o PC<br><span class="dica" id="dica"></span></div>
@@ -33,7 +46,8 @@
   function info() {
     try {
       var r = JSON.parse(Cadu.infoRede()), d;
-      if (!r.pareado) d = "conecte o cabo uma vez para liberar o Wi-Fi";
+      document.getElementById("parear").style.display = r.pareado ? "none" : "inline-block";
+      if (!r.pareado) d = "toque em 🔑 Parear para ligar ao PC pelo Wi-Fi";
       else if (!r.wifiLigado) d = "Wi-Fi do celular desligado — toque em 📶 Wi-Fi";
       else if (!r.rede) d = "Wi-Fi sem rede — toque em 📶 Wi-Fi e escolha a de casa";
       else d = "na rede " + r.rede + " · aguardando o PC (agente ligado?)";
@@ -43,6 +57,17 @@
   }
   document.getElementById("wifi").onclick = function () { try { Cadu.abrirWifi(); } catch (e) {} };
   document.getElementById("ajustes").onclick = function () { try { Cadu.abrirAjustes(); } catch (e) {} };
+  var par = document.getElementById("par"), pm = document.getElementById("parMsg"), cod = document.getElementById("cod");
+  function pedir() { pm.textContent = "Procurando o PC na rede…"; try { Cadu.pedirCodigo(); } catch (e) { pm.textContent = "Este app não tem pareamento sem cabo."; } }
+  window.aoParear = function (tipo, msg) {
+    pm.textContent = msg;
+    if (tipo === "pedido") cod.focus();
+    if (tipo === "ok") setTimeout(function () { par.className = ""; }, 1500);
+  };
+  document.getElementById("parear").onclick = function () { par.className = "ver"; cod.value = ""; pedir(); };
+  document.getElementById("outro").onclick = pedir;
+  document.getElementById("fechar").onclick = function () { par.className = ""; };
+  document.getElementById("confirmar").onclick = function () { pm.textContent = "Conferindo…"; try { Cadu.enviarCodigo(cod.value); } catch (e) {} };
   info();
 </script>
 </body>

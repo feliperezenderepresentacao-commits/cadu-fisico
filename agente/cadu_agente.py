@@ -256,6 +256,12 @@ def executar(botao, cfg):
 NOTICIAS = None  # definido no main()
 PET = None
 AGENDA = None    # Fase 2: agenda por voz
+PAREAR = {"codigo": None, "ate": 0, "erros": 0}   # pareamento sem cabo (código de 6 dígitos)
+
+
+def AGENDA_notificar(titulo, texto):
+    from agenda import notificar
+    notificar(titulo, texto)
 OUVIDO = None
 
 
@@ -299,6 +305,27 @@ class Handler(BaseHTTPRequestHandler):
         q = urllib.parse.parse_qs(u.query)
         if u.path == "/api/ping":  # usado pelo app para achar o PC (não revela nada)
             return self._json({"ok": True, "cadu": 1})
+        if u.path in ("/instalar", "/cadu.apk"):   # instalação sem cabo: o navegador do celular baixa o app
+            a = achar_apk()
+            if u.path == "/cadu.apk":
+                if not a:
+                    return self._json({"erro": "nenhum APK no PC"}, 404)
+                return self._arquivo(a, "application/vnd.android.package-archive", cache=False)
+            html = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                    "<body style='font-family:sans-serif;background:#0d1020;color:#f1f2f6;padding:24px;font-size:20px'>"
+                    "<h2 style='color:#ffd166'>Instalar o Cadu</h2>%s"
+                    "<p>1. Toque no botão e espere baixar.<br>2. Abra o arquivo baixado e toque em <b>Instalar</b>"
+                    " (se pedir, libere <b>Fontes desconhecidas</b>).<br>3. Abra o Cadu e toque em <b>🔑 Parear</b>.</p>") % (
+                ("<p><a href='/cadu.apk' style='display:inline-block;background:#06d6a0;color:#0d1020;padding:18px 28px;"
+                 "text-decoration:none;font-weight:bold;border-radius:8px'>⬇ Baixar o app (%s)</a></p>" % a.name) if a
+                else "<p style='color:#ef476f'>Nenhum APK no PC. Baixe o cadu-fisico.apk na pasta Downloads do PC.</p>")
+            corpo = html.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(corpo)))
+            self.end_headers()
+            self.wfile.write(corpo)
+            return
         if u.path.startswith("/static/"):  # fontes, ícones e bibliotecas (públicos)
             raiz = (WEB / "static").resolve()
             alvo = (WEB / u.path.lstrip("/")).resolve()
@@ -364,6 +391,26 @@ class Handler(BaseHTTPRequestHandler):
     # --- POST
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
+        if u.path == "/api/parear/pedir":   # pareamento sem cabo, passo 1: o PC mostra um código
+            PAREAR.update(codigo="%06d" % secrets.randbelow(1000000), ate=time.time() + 600, erros=0)
+            log("[parear] código para o celular (%s): %s" % (self.client_address[0], PAREAR["codigo"]))
+            AGENDA_notificar("Código do Cadu: " + PAREAR["codigo"], "Digite este código no celular para parear (vale 10 minutos).")
+            return self._json({"ok": True})
+        if u.path == "/api/parear":         # passo 2: o celular manda o código e recebe o token
+            try:
+                cod = str(self._corpo().get("codigo") or "").strip()
+            except Exception:
+                cod = ""
+            if not PAREAR["codigo"] or time.time() > PAREAR["ate"]:
+                return self._json({"ok": False, "msg": "Código vencido. Peça outro."})
+            if not secrets.compare_digest(cod, PAREAR["codigo"]):
+                PAREAR["erros"] += 1
+                if PAREAR["erros"] >= 5:
+                    PAREAR["codigo"] = None
+                return self._json({"ok": False, "msg": "Código errado."})
+            PAREAR["codigo"] = None
+            log("[parear] celular %s pareado pelo Wi-Fi" % self.client_address[0])
+            return self._json({"ok": True, "token": TOKEN, "ip": self.headers.get("Host", "").split(":")[0]})
         if not self._autorizado(urllib.parse.parse_qs(u.query)):
             return self._json({"erro": "não autorizado"}, 403)
         try:
