@@ -25,6 +25,7 @@ except Exception:
 
 W, H, R, SOMBRA = 300, 196, 16, 6
 TRANSP = "#ff00fe"
+FONTE, FONTE_FORTE = "Bahnschrift", "Bahnschrift SemiBold"   # vem no Windows 10/11 (visual técnico/futurista)
 TEMAS = {  # fundo, faixa do topo, texto, detalhe
     "nota": ("#fff4c2", "#ffe58f", "#3d3a2f", "#b58b00"),
     "lembrete": ("#e3f2ff", "#bfe0ff", "#20344a", "#1f6fb5"),
@@ -107,17 +108,17 @@ def desenhar():
     ret_arredondado(0, 0, W, 38, R, fill=faixa, outline="")
     cv.create_rectangle(0, 24, W, 38, fill=faixa, outline="")
     icone = "⏰" if n.get("disparado") else ("🔔" if n.get("quando") else "📝")
-    cv.create_text(16, 19, text=icone + "  " + quando_txt(n), anchor="w", fill=texto, font=("Segoe UI Semibold", 10))
-    xb = cv.create_text(W - 16, 18, text="✕", anchor="e", fill=texto, font=("Segoe UI", 11))
-    estado["botoes"][xb] = fechar
+    cv.create_text(16, 19, text=icone + "  " + quando_txt(n), anchor="w", fill=texto, font=(FONTE_FORTE, 10))
+    xb = cv.create_text(W - 16, 18, text="✕", anchor="e", fill=texto, font=(FONTE, 11))
+    estado["botoes"][xb] = concluir   # fechar aqui também tira do celular
     # texto da anotação
     t = n.get("texto", "")
     tam = 14 if len(t) < 50 else (12 if len(t) < 110 else 10)
-    cv.create_text(18, 52, text=t, anchor="nw", width=W - 36, fill=texto, font=("Segoe UI", tam))
+    cv.create_text(18, 52, text=t, anchor="nw", width=W - 36, fill=texto, font=(FONTE, tam))
     # rodapé
     cv.create_line(16, H - 40, W - 16, H - 40, fill=faixa, width=1)
     criado = datetime.fromtimestamp(n.get("criado", time.time())).strftime("%d/%m %H:%M")
-    cv.create_text(18, H - 20, text=criado + " · Cadu", anchor="w", fill=detalhe, font=("Segoe UI", 8))
+    cv.create_text(18, H - 20, text=criado + " · Cadu", anchor="w", fill=detalhe, font=(FONTE, 8))
     bx = W - 16
     b = botao(bx, H - 20, "✓ Concluir", detalhe, concluir)
     bx = cv.bbox(b)[0] - 10
@@ -128,10 +129,10 @@ def desenhar():
 
 
 def botao(x, y, rotulo, cor, fn):
-    t = cv.create_text(x, y, text=rotulo, anchor="e", fill=cor, font=("Segoe UI Semibold", 9))
+    t = cv.create_text(x, y, text=rotulo, anchor="e", fill=cor, font=(FONTE_FORTE, 9))
     estado["botoes"][t] = fn
-    cv.tag_bind(t, "<Enter>", lambda e: (cv.itemconfigure(t, font=("Segoe UI Semibold", 9, "underline")), raiz.config(cursor="hand2")))
-    cv.tag_bind(t, "<Leave>", lambda e: (cv.itemconfigure(t, font=("Segoe UI Semibold", 9)), raiz.config(cursor="")))
+    cv.tag_bind(t, "<Enter>", lambda e: (cv.itemconfigure(t, font=(FONTE_FORTE, 9, "underline")), raiz.config(cursor="hand2")))
+    cv.tag_bind(t, "<Leave>", lambda e: (cv.itemconfigure(t, font=(FONTE_FORTE, 9)), raiz.config(cursor="")))
     return t
 
 

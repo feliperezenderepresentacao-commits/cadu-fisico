@@ -225,6 +225,7 @@ class Agenda:
         return n
 
     def feito(self, nid):
+        self._evento(tipo="feito", id=nid, texto="")
         with self.trava:
             for n in self.notas:
                 if n["id"] == nid:

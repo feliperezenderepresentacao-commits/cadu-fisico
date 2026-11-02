@@ -203,30 +203,86 @@ def hora_de_dormir(cfg):
 _apps = {}
 
 
+def _achar_atalho(nome):
+    """Procura o atalho do app no Menu Iniciar (é assim que o Windows abre apps instalados)."""
+    alvo = nome.lower()
+    pastas = [Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs",
+              Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "Microsoft/Windows/Start Menu/Programs",
+              Path(os.environ.get("USERPROFILE", "")) / "Desktop", Path(os.environ.get("PUBLIC", r"C:\Users\Public")) / "Desktop"]
+    for pasta in pastas:
+        if not pasta.is_dir():
+            continue
+        for lnk in pasta.rglob("*.lnk"):
+            if lnk.stem.lower() == alvo:
+                return str(lnk)
+    return None
+
+
+def _protocolo_registrado(proto):
+    try:
+        import winreg
+        winreg.CloseKey(winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, proto))
+        return True
+    except Exception:
+        return False
+
+
 def abrir_app(nome, url_reserva, rotulo):
-    """Abre um aplicativo instalado pelo nome que aparece no Menu Iniciar (ex.: "Claude").
-    Funciona para apps comuns e da Microsoft Store. Se não achar, abre o site reserva."""
+    """Abre um app instalado (ex.: "Claude"), sem depender do PowerShell (bloqueado neste PC quando o agente
+    roda escondido). Ordem: atalho do Menu Iniciar → pastas conhecidas → protocolo (claude://) → Get-StartApps → site."""
+    if not hasattr(os, "startfile"):
+        return False, "Só funciona no Windows."
     if nome not in _apps:
+        achado = _achar_atalho(nome)
+        if not achado:
+            base = os.environ.get("LOCALAPPDATA", "")
+            for c in [os.path.join(base, "AnthropicClaude", "claude.exe"), os.path.join(base, "Programs", "Claude", "Claude.exe"),
+                      os.path.join(base, "Claude", "Claude.exe"), os.path.join(base, "Programs", nome, nome + ".exe")]:
+                if os.path.isfile(c):
+                    achado = c
+                    break
+        if not achado and _protocolo_registrado(nome.lower()):
+            achado = nome.lower() + "://"
+        if not achado:
+            try:
+                cmd = "(Get-StartApps | Where-Object { $_.Name -eq '%s' } | Select-Object -First 1).AppID" % nome.replace("'", "")
+                r = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=20,
+                                   stdin=subprocess.DEVNULL, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                app_id = (r.stdout or "").strip()
+                if app_id:
+                    achado = "shell:AppsFolder\\" + app_id
+            except Exception:
+                pass
+        _apps[nome] = achado
+        log("[app] %s -> %s" % (nome, achado or "não encontrado"))
+    alvo = _apps[nome]
+    if alvo:
         try:
-            cmd = "(Get-StartApps | Where-Object { $_.Name -eq '%s' } | Select-Object -First 1).AppID" % nome.replace("'", "")
-            r = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=20,
-                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            _apps[nome] = (r.stdout or "").strip() or None
-        except Exception:
-            _apps[nome] = None
-    app_id = _apps[nome]
-    if app_id:
-        subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + app_id])
-        return True, rotulo + ": aberto."
+            if alvo.startswith("shell:"):
+                subprocess.Popen(["explorer.exe", alvo])
+            else:
+                os.startfile(alvo)
+            return True, rotulo + ": aberto."
+        except Exception as e:
+            _apps.pop(nome, None)
+            log("[app] falhou ao abrir %s: %s" % (alvo, e))
     if url_reserva:
         webbrowser.open(url_reserva)
         return True, rotulo + ": app não encontrado, abri o site."
     return False, "App %s não encontrado no PC." % nome
+
+
 def executar(botao, cfg):
     tipo = botao.get("tipo")
     if tipo == "comando":
         subprocess.Popen(os.path.expandvars(botao["comando"]), shell=True)
         return True, botao["rotulo"] + ": aberto."
+    if tipo == "protocolo":   # ex.: steam://rungameid/730 (CS2)
+        try:
+            os.startfile(botao["url"])
+            return True, botao["rotulo"] + ": abrindo…"
+        except Exception as e:
+            return False, botao["rotulo"] + ": não abriu (%s)." % e
     if tipo == "url":
         webbrowser.open(botao["url"])
         return True, botao["rotulo"] + ": aberto no navegador."

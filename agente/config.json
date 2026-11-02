@@ -51,6 +51,14 @@
       "url_reserva": "https://claude.ai"
     },
     {
+      "id": "cs2",
+      "icone": "gamepad",
+      "rotulo": "CS2",
+      "tipo": "protocolo",
+      "url": "steam://rungameid/730",
+      "cor": "#ff9f1c"
+    },
+    {
       "id": "vps",
       "icone": "cloud-server",
       "rotulo": "Status VPS",
