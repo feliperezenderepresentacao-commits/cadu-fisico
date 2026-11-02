@@ -12,22 +12,23 @@
           -webkit-animation: respira 4s ease-in-out infinite; animation: respira 4s ease-in-out infinite; }
   @-webkit-keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
   @keyframes respira { 0%,100% { opacity: .45 } 50% { opacity: 1 } }
-  .msg { position: absolute; bottom: 12vmin; left: 0; right: 0; text-align: center; color: #3a6f7d;
+  .rosto { bottom: 40vmin; }
+  .msg { position: absolute; top: 15vmin; left: 0; right: 0; z-index: 5; text-align: center; color: #3a6f7d;
          font-size: 4.2vmin; line-height: 1.5; letter-spacing: .05em; padding: 0 4vmin; }
   .dica { font-size: 3.2vmin; opacity: .8; }
-  .barra { position: absolute; top: 3vmin; right: 3vmin; }
+  .barra { position: absolute; top: 3vmin; right: 3vmin; z-index: 10; }
   .bt { display: inline-block; margin-left: 2vmin; height: 9vmin; line-height: 9vmin; padding: 0 4vmin; border-radius: 4.5vmin;
         background: #111c21; border: .3vmin solid #1d2e35; color: #cfe3e8; font-size: 3.6vmin; }
   .bt:active { background: #1d3540; }
-  #par { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.92); text-align: center; padding-top: 8vmin; color: #cfe3e8; }
+  #par { display: none; z-index: 20; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.92); text-align: center; padding-top: 8vmin; color: #cfe3e8; }
   #par.ver { display: block; }
   #par h2 { color: #ffd166; font-size: 5vmin; margin: 0 0 3vmin; }
   #parMsg { font-size: 3.8vmin; min-height: 10vmin; padding: 0 6vmin; }
   #cod { width: 46vmin; font-size: 8vmin; letter-spacing: 2vmin; text-align: center; background: #111c21; color: #fff; border: .4vmin solid #3a6f7d; border-radius: 2vmin; padding: 1vmin; }
-  #mic { position: absolute; left: 50%; bottom: 26vmin; -webkit-transform: translateX(-50%); transform: translateX(-50%); height: 15vmin; line-height: 15vmin;
+  #mic { position: absolute; z-index: 10; left: 50%; bottom: 13vmin; -webkit-transform: translateX(-50%); transform: translateX(-50%); height: 15vmin; line-height: 15vmin;
          padding: 0 7vmin; border-radius: 7.5vmin; background: #12362c; border: .5vmin solid #06d6a0; color: #e8fff6; font-size: 5vmin; white-space: nowrap; }
   #mic.rec { background: #3d1621; border-color: #ef476f; -webkit-animation: respira 1s ease-in-out infinite; animation: respira 1s ease-in-out infinite; }
-  #micInfo { position: absolute; left: 0; right: 0; bottom: 20vmin; text-align: center; color: #6fb3a0; font-size: 3.4vmin; }
+  #micInfo { position: absolute; z-index: 10; left: 0; right: 0; bottom: 5vmin; text-align: center; color: #6fb3a0; font-size: 3.4vmin; }
   .bt.ok { background: #06d6a0; color: #0d1020; border-color: #06d6a0; }
 </style>
 </head>
