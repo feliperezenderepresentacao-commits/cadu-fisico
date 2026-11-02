@@ -23,6 +23,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -50,7 +51,8 @@ def ler_prefs():
         return dict(PREFS_PADRAO)
 PORTA_BEACON = 8766
 TIPOS = {".js": "application/javascript", ".css": "text/css", ".woff": "font/woff", ".woff2": "font/woff2",
-         ".svg": "image/svg+xml", ".png": "image/png", ".txt": "text/plain; charset=utf-8"}
+         ".svg": "image/svg+xml", ".png": "image/png", ".txt": "text/plain; charset=utf-8",
+         ".html": "text/html; charset=utf-8", ".css": "text/css", ".mp3": "audio/mpeg", ".ttf": "font/ttf", ".gif": "image/gif", ".jpg": "image/jpeg"}
 PAGINAS = {"/": "index.html", "/index.html": "index.html", "/teste3d.html": "teste3d.html"}
 
 
@@ -293,7 +295,7 @@ class Handler(BaseHTTPRequestHandler):
             raiz = (WEB / "static").resolve()
             alvo = (WEB / u.path.lstrip("/")).resolve()
             if raiz in alvo.parents and alvo.is_file() and alvo.suffix in TIPOS:
-                return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2") or alvo.name == "three.min.js")
+                return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2", ".mp3", ".ttf") or alvo.name == "three.min.js" or "/assets/" in u.path)
             return self._json({"erro": "não encontrado"}, 404)
         if not self._autorizado(q):
             return self._json({"erro": "não autorizado"}, 403)
@@ -312,7 +314,10 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"hora": time.strftime("%H:%M"),
                         "vps": checar_vps(cfg.get("vps_url")),
                         "dormir": hora_de_dormir(cfg),
-                        "via": "cabo" if self._pelo_cabo() else "wifi"})
+                        "via": "cabo" if self._pelo_cabo() else "wifi",
+                        # relógio do PC (o celular pode estar em outro fuso)
+                        "agora_ms": int(time.time() * 1000),
+                        "fuso_min": int(datetime.now().astimezone().utcoffset().total_seconds() // 60)})
         elif u.path == "/api/pet":
             self._json(PET.estado())
         elif u.path == "/api/prefs":

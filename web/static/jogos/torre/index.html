@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Torre do Cadu</title>
+<!-- Tower Building por iamkun / BMQB (MIT) — veja LICENSE. Moldura, toque e robô: Cadu. -->
+<link rel="stylesheet" href="../base.css">
+<style> #area { background: #2b2142; } #canvas { display: block; } </style>
+</head><body>
+<div id="area"><canvas id="canvas"></canvas></div>
+<script src="../base.js"></script>
+<script src="main.js"></script>
+<script>
+(function () {
+  var q = location.search, area = document.getElementById("area");
+  var H = area.clientHeight, W = Math.min(area.clientWidth, Math.round(H / 1.25));
+  var pontos = 0, acertos = 0, acabou = false;
+  var game = TowerGame({ width: W, height: H, canvasId: "canvas", soundOn: q.indexOf("som=0") < 0,
+    setGameScore: function (s) { pontos = s; Jogo.pontos(s); },
+    setGameSuccess: function (s) { if (s > acertos) { acertos = s; if (s % 5 === 0) Jogo.recompensa(1, s + " andares!"); } },
+    setGameFailed: function (f) { if (f >= 3 && !acabou) { acabou = true; Jogo.fim("FIM · " + pontos); setTimeout(function () { location.reload(); }, 3500); } } });
+  var lado = null, soltarOrig = null;
+  game.load(function () {
+    game.init();
+    soltarOrig = game.touchStartListener;
+    game.touchStartListener = function (e) { lado = lado || document.getElementById("lado"); if (e && e.target && lado && lado.contains(e.target)) return; soltarOrig(e); };
+    setTimeout(game.start, 300);
+  }, function () {});
+  function soltar() { if (soltarOrig && !acabou) soltarOrig(); }
+  // robô: solta quando o bloco que balança está alinhado com o topo da torre
+  function bot() {
+    if (!soltarOrig || acabou) return;
+    var n = game.getVariable("BLOCK_COUNT"), b = game.getInstance("block_" + n), ant = game.getInstance("block_" + (n - 1));
+    if (!b || b.status !== "SWING") return;
+    var esq = (b.weightX !== undefined ? b.weightX : b.x) - (b.calWidth || 0);
+    if (!ant) { if (Math.abs(b.x - W / 2) < W * 0.04 || Math.random() < 0.02) soltar(); return; }
+    var erro = esq - ant.x, tol = (game.getVariable("BLOCK_WIDTH") || W * 0.25) * 0.07;
+    if (Math.abs(erro) < tol) soltar();
+  }
+  Jogo.iniciar({ id: "torre", nome: "Torre", botMs: 30, bot: bot,
+    controles: [{ rotulo: "soltar", larga: true, fn: soltar }],
+    aoAuto: function () { Jogo.falar(Jogo.sortear(["Vou até o céu!", "Mira… agora!", "Construindo!"])); } });
+  Jogo.falar("Toque para soltar o bloco!");
+})();
+</script>
+</body></html>

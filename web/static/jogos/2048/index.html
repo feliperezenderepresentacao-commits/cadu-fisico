@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>2048 do Cadu</title>
+<!-- 2048 por Gabriele Cirulli (MIT) + IA de Matt Overlan (MIT) — veja LICENSE.txt -->
+<link rel="stylesheet" href="main.css"><link rel="stylesheet" href="../base.css">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--fundo); font-family: "Silkscreen", monospace; }
+  #area { padding: 2vmin; }
+  .game-container { -webkit-flex-shrink: 0; flex-shrink: 0; margin: 0; -webkit-transform-origin: 50% 50%; transform-origin: 50% 50%; border-radius: 0; background: #39446b;
+    box-shadow: 0 0 0 6px #1d2540; }
+  .grid-cell { border-radius: 0; background: rgba(13,16,32,.45); }
+  .tile { border-radius: 0; font-family: "Silkscreen", monospace; }
+  .tile .tile-inner { border-radius: 0; }
+  .game-message p { font-family: "Silkscreen", monospace; }
+  .game-message .lower { display: none; }
+  #escondidos { display: none; }
+  .tile.tile-2 .tile-inner, .tile.tile-4 .tile-inner { color: #3a3046; }
+</style></head>
+<body>
+<div id="area"><div class="game-container" id="tab">
+  <div class="game-message"><p></p><div class="lower"><a class="retry-button">de novo</a></div></div>
+  <div class="grid-container">
+    <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+    <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+    <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+    <div class="grid-row"><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div></div>
+  </div>
+  <div class="tile-container"></div>
+</div></div>
+<div id="escondidos"><div class="score-container">0</div><div id="feedback-container"></div><a id="hint-button"></a><a id="run-button"></a></div>
+<script src="../base.js"></script>
+<script>animationDelay = 100; minSearchTime = 60;</script>
+<script src="animframe_polyfill.js"></script><script src="hammer.min.js"></script><script src="keyboard_input_manager.js"></script>
+<script src="html_actuator.js"></script><script src="grid.js"></script><script src="tile.js"></script><script src="ai.js"></script><script src="game_manager.js"></script>
+<script>
+(function () {
+  function ajustar() { var a = document.getElementById("area"), t = document.getElementById("tab"); var e = Math.min(a.clientWidth, a.clientHeight) * 0.92 / 500; t.style.webkitTransform = t.style.transform = "scale(" + e + ")"; }
+  window.addEventListener("resize", ajustar); ajustar();
+  var M, maior = 0, reinicio = null;
+  function maxPeca() { var m = 0; M.grid.cells.forEach(function (c) { c.forEach(function (t) { if (t && t.value > m) m = t.value; }); }); return m; }
+  function novo() { clearTimeout(reinicio); reinicio = null; M.restart(); maior = 0; Jogo.pontos(0); }
+  window.requestAnimationFrame(function () {
+    M = new GameManager(4, KeyboardInputManager, HTMLActuator);
+    var act = M.actuate;
+    M.actuate = function () {
+      act.call(M); Jogo.pontos(M.score);
+      var m = maxPeca();
+      if (m >= 128 && m > maior) { if (maior) Jogo.recompensa(m >= 512 ? 3 : 1, "Fiz " + m + "!"); maior = m; }
+      if ((M.over || M.won) && !reinicio) { Jogo.fim(M.won ? "2048!!!" : "FIM · " + M.score); reinicio = setTimeout(novo, 3500); }
+    };
+    Jogo.iniciar({ id: "2048", nome: "2048", botMs: 260,
+      controles: [{ rotulo: "▲", fn: function () { M.move(0); } }, { rotulo: "▼", fn: function () { M.move(2); } },
+                  { rotulo: "◀", fn: function () { M.move(3); } }, { rotulo: "▶", fn: function () { M.move(1); } },
+                  { rotulo: "novo jogo", larga: true, fn: novo }],
+      bot: function () { if (M.over || M.won) return; var b = M.ai.getBest(); if (b && b.move !== -1 && b.move !== undefined) M.move(+b.move); },
+      aoAuto: function () { Jogo.falar(Jogo.sortear(["Deixa comigo!", "Vou juntar tudo!", "Olha a estratégia…"])); }
+    });
+    Jogo.falar("Arraste ou use as setas!");
+  });
+})();
+</script>
+</body></html>

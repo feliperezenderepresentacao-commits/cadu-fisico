@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Come-Come do Cadu</title>
+<!-- HTML5 Pacman por Dale Harvey (WTFPL) — veja LICENSE. Moldura, toque e robô: Cadu. -->
+<link rel="stylesheet" href="../base.css">
+<style>
+  @font-face { font-family: 'BDCartoonShoutRegular'; src: url('BD_Cartoon_Shout-webfont.ttf') format('truetype'); }
+  #area { background: #000; } #pac canvas { display: block; }
+  #shim { font-family: BDCartoonShoutRegular; position: absolute; visibility: hidden; }
+</style>
+</head><body>
+<div id="shim">.</div>
+<div id="area"><div id="pac"></div></div>
+<script src="../base.js"></script>
+<script>try { localStorage["soundDisabled"] = location.search.indexOf("som=0") >= 0 ? "true" : "false"; } catch (e) {}</script>
+<script src="pacman.js"></script><script src="modernizr-1.5.min.js"></script>
+<script>
+(function () {
+  var area = document.getElementById("area"), el = document.getElementById("pac");
+  var H = area.clientHeight * 0.97, bs = Math.floor((H - 30) / 22);
+  el.style.width = (bs * 19) + "px";
+  setTimeout(function () { PACMAN.init(el, "./"); }, 0);
+  var K = { cima: 38, baixo: 40, esq: 37, dir: 39 }, ultPts = 0, marco = 1000, esperaNovo = null, ultEstado = null;
+  // ---- robô: foge dos fantasmas perigosos, caça os assustados e vai atrás das bolinhas
+  var W = 19, Hh = 22;
+  function livre(m, x, y) { if (y === 10 && (x < 0 || x >= W)) return true; return m.isFloorSpace({ x: x, y: y }); }
+  function viz(x, y) { var l = [[x, y - 1, K.cima], [x, y + 1, K.baixo], [x - 1, y, K.esq], [x + 1, y, K.dir]]; for (var i = 0; i < 4; i++) { if (l[i][0] < 0) l[i][0] = W - 1; if (l[i][0] >= W) l[i][0] = 0; } return l; }
+  function bfs(m, sx, sy, alvo, limite) {
+    var vis = {}, fila = [[sx, sy, 0]], k; vis[sx + "," + sy] = 1;
+    while (fila.length) { var c = fila.shift(); if (alvo(c[0], c[1]) && c[2] > 0) return c[2]; if (c[2] >= (limite || 60)) continue;
+      var v = viz(c[0], c[1]); for (var i = 0; i < 4; i++) { k = v[i][0] + "," + v[i][1]; if (!vis[k] && livre(m, v[i][0], v[i][1])) { vis[k] = 1; fila.push([v[i][0], v[i][1], c[2] + 1]); } } }
+    return 99;
+  }
+  function bot() {
+    var e = PACMAN.estado();
+    if (e.state === 5) { if (!esperaNovo) esperaNovo = setTimeout(function () { esperaNovo = null; PACMAN.novo(); }, 2500); return; }
+    if (e.state !== 7 || !e.user || !e.ghostPos) return;
+    var m = e.map, ux = Math.round(e.user.x / 10), uy = Math.round(e.user.y / 10), perigos = [], presas = [];
+    for (var i = 0; i < e.ghosts.length; i++) { var g = e.ghostPos[i]["new"], gc = [Math.round(g.x / 10), Math.round(g.y / 10)];
+      if (e.ghosts[i].isVunerable()) presas.push(gc); else if (e.ghosts[i].isDangerous()) perigos.push(gc); }
+    var melhor = null, v = viz(ux, uy);
+    for (i = 0; i < 4; i++) {
+      var nx = v[i][0], ny = v[i][1]; if (!livre(m, nx, ny)) continue;
+      var dp = 99; perigos.forEach(function (p) { var d = Math.abs(p[0] - nx) + Math.abs(p[1] - ny); if (d < 7) d = bfs(m, nx, ny, function (x, y) { return x === p[0] && y === p[1]; }, 10) ; dp = Math.min(dp, d); });
+      var comida = bfs(m, nx, ny, function (x, y) { var b = m.block({ x: x, y: y }); return b === 1 || b === 4; }, 60);
+      var b0 = m.block({ x: nx, y: ny }); if (b0 === 1 || b0 === 4) comida = 0;
+      var caca = presas.length ? Math.min.apply(null, presas.map(function (p) { return Math.abs(p[0] - nx) + Math.abs(p[1] - ny); })) : 99;
+      var nota = -comida + (dp < 3 ? -500 : Math.min(dp, 8) * 3) + (caca < 8 ? (8 - caca) * 6 : 0) + Math.random() * 0.5;
+      if (!melhor || nota > melhor.nota) melhor = { nota: nota, k: v[i][2] };
+    }
+    if (melhor) PACMAN.dir(melhor.k);
+  }
+  setInterval(function () {
+    var e = PACMAN.estado && PACMAN.estado(); if (!e) return;
+    if (e.score !== ultPts) { ultPts = e.score; Jogo.pontos(e.score); if (e.score >= marco) { marco += 1000; Jogo.recompensa(1, "Nham! " + e.score); } }
+    if (ultEstado === 7 && e.state === 5) { Jogo.fim("FIM · " + e.score); marco = 1000; }
+    ultEstado = e.state;
+  }, 300);
+  // arrastar o dedo no labirinto também vira direção
+  var ini = null;
+  area.addEventListener("touchstart", function (e) { var t = e.touches[0]; ini = [t.clientX, t.clientY]; if (PACMAN.estado().state === 5) PACMAN.novo(); }, false);
+  area.addEventListener("touchend", function (e) { if (!ini) return; var t = e.changedTouches[0], dx = t.clientX - ini[0], dy = t.clientY - ini[1]; ini = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; PACMAN.dir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? K.dir : K.esq) : (dy > 0 ? K.baixo : K.cima)); }, false);
+  Jogo.iniciar({ id: "pacman", nome: "Come-come", botMs: 90, bot: bot,
+    controles: [{ rotulo: "▲", fn: function () { PACMAN.dir(K.cima); } }, { rotulo: "▼", fn: function () { PACMAN.dir(K.baixo); } },
+                { rotulo: "◀", fn: function () { PACMAN.dir(K.esq); } }, { rotulo: "▶", fn: function () { PACMAN.dir(K.dir); } },
+                { rotulo: "novo jogo", larga: true, fn: function () { PACMAN.novo(); } }],
+    aoAuto: function () { Jogo.falar(Jogo.sortear(["Fantasmas, cuidado!", "Bora comer tudo!", "Minha vez!"])); } });
+  Jogo.falar("Arraste ou use as setas!");
+})();
+</script>
+</body></html>

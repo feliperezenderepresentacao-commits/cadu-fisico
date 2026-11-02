@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Tetris do Cadu</title>
+<!-- Lógica baseada em javascript-tetris de Jake Gordon (MIT) — veja LICENSE. Visual, toque e robô: Cadu. -->
+<link rel="stylesheet" href="../base.css">
+<style> #area canvas { image-rendering: pixelated; } #prox { margin-left: 2.5vmin; -webkit-align-self: flex-start; align-self: flex-start; margin-top: 6vmin; } </style>
+</head><body>
+<div id="area"><canvas id="quadra"></canvas><canvas id="prox"></canvas></div>
+<script src="../base.js"></script>
+<script>
+(function () {
+  "use strict";
+  var NX = 10, NY = 20, cv = document.getElementById("quadra"), ctx = cv.getContext("2d"), pv = document.getElementById("prox"), pctx = pv.getContext("2d"), B = 16;
+  var CORES = { i: "#5ce1e6", j: "#4d7cff", l: "#ff9f1c", o: "#ffd166", s: "#06d6a0", t: "#c77dff", z: "#ef476f" };
+  var P = {
+    i: { n: "i", size: 4, blocks: [0x0F00, 0x2222, 0x00F0, 0x4444] }, j: { n: "j", size: 3, blocks: [0x44C0, 0x8E00, 0x6440, 0x0E20] },
+    l: { n: "l", size: 3, blocks: [0x4460, 0x0E80, 0xC440, 0x2E00] }, o: { n: "o", size: 2, blocks: [0xCC00, 0xCC00, 0xCC00, 0xCC00] },
+    s: { n: "s", size: 3, blocks: [0x06C0, 0x8C40, 0x6C00, 0x4620] }, t: { n: "t", size: 3, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640] },
+    z: { n: "z", size: 3, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640] } };
+  var grade, atual, prox, pontos, linhas, passo, acum, jogando, saco = [], planoBot = [], fimT = null;
+  function cada(tipo, x, y, dir, fn) { var row = 0, col = 0, b = tipo.blocks[dir]; for (var bit = 0x8000; bit > 0; bit = bit >> 1) { if (b & bit) fn(x + col, y + row); if (++col === 4) { col = 0; ++row; } } }
+  function ocupado(g, tipo, x, y, dir) { var r = false; cada(tipo, x, y, dir, function (a, b) { if (a < 0 || a >= NX || b < 0 || b >= NY || g[b][a]) r = true; }); return r; }
+  function sortear() { if (!saco.length) saco = ["i", "j", "l", "o", "s", "t", "z", "i", "j", "l", "o", "s", "t", "z"]; var t = P[saco.splice(Math.floor(Math.random() * saco.length), 1)[0]]; return { tipo: t, dir: 0, x: Math.floor((NX - t.size) / 2), y: 0 }; }
+  function vazia() { var g = []; for (var y = 0; y < NY; y++) { g.push([]); for (var x = 0; x < NX; x++) g[y].push(null); } return g; }
+  function novo() { clearTimeout(fimT); fimT = null; grade = vazia(); pontos = 0; linhas = 0; passo = 0.6; acum = 0; atual = sortear(); prox = sortear(); jogando = true; planoBot = []; Jogo.pontos(0); }
+  function mover(dx, dy) { if (!jogando) return false; if (!ocupado(grade, atual.tipo, atual.x + dx, atual.y + dy, atual.dir)) { atual.x += dx; atual.y += dy; return true; } return false; }
+  function girar() { if (!jogando) return; var nd = (atual.dir + 1) % 4; if (!ocupado(grade, atual.tipo, atual.x, atual.y, nd)) atual.dir = nd; else if (!ocupado(grade, atual.tipo, atual.x - 1, atual.y, nd)) { atual.x--; atual.dir = nd; } else if (!ocupado(grade, atual.tipo, atual.x + 1, atual.y, nd)) { atual.x++; atual.dir = nd; } }
+  function limpar(g) { var n = 0; for (var y = NY - 1; y >= 0; y--) { var cheia = true; for (var x = 0; x < NX; x++) if (!g[y][x]) { cheia = false; break; } if (cheia) { g.splice(y, 1); var l = []; for (x = 0; x < NX; x++) l.push(null); g.unshift(l); n++; y++; } } return n; }
+  function descer() {
+    if (!jogando) return;
+    if (!mover(0, 1)) {
+      cada(atual.tipo, atual.x, atual.y, atual.dir, function (x, y) { grade[y][x] = atual.tipo.n; });
+      var n = limpar(grade); pontos += 10;
+      if (n) { linhas += n; pontos += 100 * Math.pow(2, n - 1); passo = Math.max(0.12, 0.6 - linhas * 0.006); Jogo.recompensa(n >= 2 ? n : 1, n === 4 ? "TETRIS!!!" : (n > 1 ? n + " linhas!" : null)); }
+      Jogo.pontos(pontos);
+      atual = prox; prox = sortear(); planoBot = [];
+      if (ocupado(grade, atual.tipo, atual.x, atual.y, atual.dir)) { jogando = false; Jogo.fim("FIM · " + pontos); fimT = setTimeout(novo, 3500); }
+    }
+  }
+  function queda() { if (!jogando) return; while (mover(0, 1)) pontos += 1; descer(); }
+  // ---- robô: testa cada giro e coluna e escolhe a melhor jogada (altura, buracos, irregularidade, linhas)
+  function avaliar(g) {
+    var alt = [], soma = 0, buracos = 0, irreg = 0, x, y;
+    for (x = 0; x < NX; x++) { for (y = 0; y < NY && !g[y][x]; y++); alt.push(NY - y); soma += NY - y; for (; y < NY; y++) if (!g[y][x]) buracos++; }
+    for (x = 0; x < NX - 1; x++) irreg += Math.abs(alt[x] - alt[x + 1]);
+    return { soma: soma, buracos: buracos, irreg: irreg };
+  }
+  function planejar() {
+    var melhor = null;
+    for (var d = 0; d < 4; d++) for (var x = -2; x < NX; x++) {
+      if (ocupado(grade, atual.tipo, x, atual.y, d)) continue;
+      var y = atual.y; while (!ocupado(grade, atual.tipo, x, y + 1, d)) y++;
+      var g = grade.map(function (l) { return l.slice(); });
+      cada(atual.tipo, x, y, d, function (a, b) { g[b][a] = 1; });
+      var n = limpar(g), f = avaliar(g), nota = -0.51 * f.soma + 0.76 * n - 0.36 * f.buracos - 0.18 * f.irreg;
+      if (!melhor || nota > melhor.nota) melhor = { nota: nota, d: d, x: x };
+    }
+    if (!melhor) return ["cair"];
+    var p = [], giros = (melhor.d - atual.dir + 4) % 4, i;
+    for (i = 0; i < giros; i++) p.push("girar");
+    var dx = melhor.x - atual.x;
+    for (i = 0; i < Math.abs(dx); i++) p.push(dx > 0 ? "dir" : "esq");
+    p.push("cair"); return p;
+  }
+  function bot() {
+    if (!jogando) return;
+    if (!planoBot.length) planoBot = planejar();
+    var a = planoBot.shift();
+    if (a === "girar") girar(); else if (a === "dir") mover(1, 0); else if (a === "esq") mover(-1, 0); else queda();
+  }
+  // ---- desenho
+  function bloco(c, x, y, cor, b) {
+    c.fillStyle = cor; c.fillRect(x * b, y * b, b, b);
+    c.fillStyle = "rgba(255,255,255,.35)"; c.fillRect(x * b, y * b, b, Math.max(2, b / 6)); c.fillRect(x * b, y * b, Math.max(2, b / 6), b);
+    c.fillStyle = "rgba(0,0,0,.3)"; c.fillRect(x * b, y * b + b - Math.max(2, b / 6), b, Math.max(2, b / 6)); c.fillRect(x * b + b - Math.max(2, b / 6), y * b, Math.max(2, b / 6), b);
+  }
+  function medir() { var a = document.getElementById("area"); B = Math.max(8, Math.floor(a.clientHeight * 0.94 / NY)); cv.width = NX * B; cv.height = NY * B; pv.width = pv.height = 4 * Math.floor(B * 0.8); }
+  function desenhar() {
+    ctx.fillStyle = "#141a2e"; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = "#1a2140"; for (var x = 0; x < NX; x += 2) ctx.fillRect(x * B, 0, B, cv.height);
+    for (var y = 0; y < NY; y++) for (x = 0; x < NX; x++) if (grade[y][x]) bloco(ctx, x, y, CORES[grade[y][x]], B);
+    if (jogando) {
+      var gy = atual.y; while (!ocupado(grade, atual.tipo, atual.x, gy + 1, atual.dir)) gy++;
+      ctx.globalAlpha = 0.22; cada(atual.tipo, atual.x, gy, atual.dir, function (a, b) { bloco(ctx, a, b, CORES[atual.tipo.n], B); }); ctx.globalAlpha = 1;
+      cada(atual.tipo, atual.x, atual.y, atual.dir, function (a, b) { bloco(ctx, a, b, CORES[atual.tipo.n], B); });
+    }
+    var pb = Math.floor(B * 0.8); pctx.fillStyle = "#1d2540"; pctx.fillRect(0, 0, pv.width, pv.height);
+    var off = (4 - prox.tipo.size) / 2; cada(prox.tipo, 0, 0, 0, function (a, b) { bloco(pctx, a + off, b + off, CORES[prox.tipo.n], pb); });
+  }
+  var ult = Date.now();
+  function quadro() {
+    var agora = Date.now(), dt = Math.min(0.1, (agora - ult) / 1000); ult = agora;
+    if (jogando) { acum += dt; if (acum > passo) { acum -= passo; descer(); } }
+    desenhar(); requestAnimationFrame(quadro);
+  }
+  window.addEventListener("resize", medir);
+  document.addEventListener("keydown", function (e) { var k = e.keyCode; if (k === 37) mover(-1, 0); else if (k === 39) mover(1, 0); else if (k === 38) girar(); else if (k === 40) descer(); else if (k === 32) queda(); });
+  Jogo.iniciar({ id: "tetris", nome: "Tetris", botMs: 110, bot: bot,
+    controles: [{ rotulo: "◀", repetir: 140, fn: function () { mover(-1, 0); } }, { rotulo: "▶", repetir: 140, fn: function () { mover(1, 0); } },
+                { rotulo: "girar", fn: girar }, { rotulo: "▼", repetir: 70, fn: descer }, { rotulo: "cair", larga: true, fn: queda }],
+    aoAuto: function () { planoBot = []; Jogo.falar(Jogo.sortear(["Minha vez!", "Vou fazer um Tetris!", "Encaixa aqui…"])); } });
+  medir(); novo(); quadro(); Jogo.falar("Use os botões para jogar!");
+})();
+</script>
+</body></html>

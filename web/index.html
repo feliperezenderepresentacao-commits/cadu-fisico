@@ -39,6 +39,8 @@
   #veu3d { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #0d1020; opacity: 0; pointer-events: none;
            -webkit-transition: opacity .25s steps(4); transition: opacity .25s steps(4); }
   #veu3d.ver { opacity: 1; }
+  #jogoFrame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; display: none; background: var(--fundo); }
+  body.modo-jogo #jogoFrame { display: block; } body.modo-jogo #mundoTela { visibility: hidden; }
   #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
   body.modo-3d #auto3d.ver { display: block; -webkit-animation: pisca 1.6s steps(2) infinite; animation: pisca 1.6s steps(2) infinite; }
   @-webkit-keyframes pisca { 50% { opacity: .55; } } @keyframes pisca { 50% { opacity: .55; } }
@@ -198,6 +200,8 @@
   <div id="ferramentas"></div>
 </div>
 
+<iframe id="jogoFrame" title="jogo"></iframe>
+
 <div id="rosto"><div id="olhos"><div class="olho e"></div><div class="olho d"></div></div></div>
 
 <div id="aviso"></div>
@@ -346,7 +350,7 @@
   // ---------------------------------------------------------------- MUNDOS 3D (carregados só quando usados)
   var m3d = false, prefs = { tour: true, som: true };
   var SETAS = { cima: ["dCima", "arrow-up"], baixo: ["dBaixo", "arrow-down"], esquerda: ["dEsq", "arrow-left"], direita: ["dDir", "arrow-right"] };
-  var NOMES3D = { vila: "Vila do Cadu", ceu: "Céu", mar: "Mar", horta: "Horta", estrada: "Estrada" };
+  var NOMES3D = { vila: "Vila do Cadu", ceu: "Céu", mar: "Mar", horta: "Horta", estrada: "Estrada", torre: "Torre", pacman: "Come-come", tetris: "Tetris", "2048": "2048" };
   function carregarScript(src, cb) { var s = document.createElement("script"); s.src = src; s.onload = function () { cb(); }; s.onerror = function () { cb(true); }; document.body.appendChild(s); }
   function iniciar3D(cb) {
     if (m3d) return cb();
@@ -359,6 +363,7 @@
           salvar: function (j) { pedir("POST", "/api/jogo", { jogo: j }); },
           aoContador: function (t) { $("nmC").textContent = t; },
           semSaida: function () { falar("Por aqui não tem caminho."); },
+          abrirJogo: abrirJogo,
           aoAuto: function (sim) { $("auto3d").className = sim ? "caixa ver" : "caixa"; },
           aoMundo: function (id, nome, viz, ferr) {
             $("nmT").textContent = nome;
@@ -386,6 +391,37 @@
       });
     });
   }
+
+  // ---------------------------------------------------------------- JOGOS (GitHub) nos 4 lados da Vila
+  var jogoAberto = null, jogoToque = 0, jogoDesde = 0, jogoTocado = false;
+  function abrirJogo(id) {
+    var f = $("jogoFrame");
+    f.src = "/static/jogos/" + id + "/index.html?estilo=" + (prefs.estilo || "bolinha") + (prefs.som === false ? "&som=0" : "");
+    jogoAberto = id; jogoDesde = jogoToque = Date.now(); jogoTocado = false;
+    if (document.body.className.indexOf("modo-jogo") < 0) document.body.className += " modo-jogo";
+    if (m3d) Mundo3D.ativo(false);
+  }
+  function fecharJogo() {
+    if (!jogoAberto) return;
+    jogoAberto = null; $("jogoFrame").src = "about:blank";
+    document.body.className = document.body.className.replace(/ ?modo-jogo/g, "");
+    if (m3d) { Mundo3D.voltouDoJogo(jogoTocado); Mundo3D.ativo(!painel.className && modoTela === "mundo3d"); }
+  }
+  window.addEventListener("message", function (e) {
+    var d = e.data || {}; if (!d.cadu || !jogoAberto) return;
+    if (d.cadu === "toque") { jogoToque = Date.now(); jogoTocado = true; }
+    else if (d.cadu === "sair") { vibrar(20); fecharJogo(); }
+    else if (d.cadu === "recompensa") { agirPet("recompensa"); if (m3d) Mundo3D.moedas(d.moedas || 1); }
+  });
+  // passeio automático: depois de um tempo sem toque, sai do jogo e volta para a Vila
+  setInterval(function () { if (jogoAberto && prefs.tour !== false && Date.now() - jogoToque > 75000 && Date.now() - jogoDesde > 75000) fecharJogo(); }, 2000);
+
+  // relógio: usa a hora do PC (o celular pode estar em outro fuso)
+  var pcDelta = null, pcFuso = 0;
+  window.horaPC = function () {
+    if (pcDelta === null) { var l = new Date(); return { h: l.getHours(), m: l.getMinutes() }; }
+    var d = new Date(Date.now() + pcDelta + pcFuso * 60000); return { h: d.getUTCHours(), m: d.getUTCMinutes() };
+  };
 
   // ---------------------------------------------------------------- OLHOS (modo alternativo)
   var humorBase = "", humorTemp = null;
@@ -419,6 +455,7 @@
     if (modoTela === "mundo") montarFerramentas([{ id: "comer" }, { id: "brincar" }, { id: "luz" }, { id: "menu" }]);
   }
   function ligarMundos(sim) {
+    if (jogoAberto) sim = false;
     Mundo.ativo(sim && modoTela === "mundo");
     if (m3d) Mundo3D.ativo(sim && modoTela === "mundo3d");
   }
@@ -428,7 +465,7 @@
   function abrirPainel() { vibrar(20); painel.className = "aberto"; ligarMundos(false); irPagina(0); reiniciarOcioso(); }
   function fecharPainel() { painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
   function reiniciarOcioso() { clearTimeout(timerOcioso); timerOcioso = setTimeout(fecharPainel, OCIOSO_MS); }
-  window.aoVoltar = function () { if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
+  window.aoVoltar = function () { if (jogoAberto && !painel.className) return fecharJogo(); if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
   $("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); apertar(this); fecharPainel(); });
   var abas = document.querySelectorAll(".aba");
   for (var a = 0; a < abas.length; a++) (function (n) { abas[n].addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(15); irPagina(n); }); })(a);
@@ -627,7 +664,7 @@
 
   // ---------------------------------------------------------------- status
   function relogio() {
-    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    var t = window.horaPC(), h = t.h, m = t.m;
     $("relogio").textContent = (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
     setTimeout(relogio, 10000);
   }
@@ -635,6 +672,7 @@
     pedir("GET", "/api/status", null, function (er, r) {
       if (!er && r) {
         var vps = r.vps;
+        if (r.agora_ms) { pcDelta = r.agora_ms - Date.now(); pcFuso = r.fuso_min || 0; }
         vpsFora = !!(vps && vps.ok === false);
         $("tVia").textContent = r.via === "wifi" ? "wi-fi" : "cabo";
         $("conexao").textContent = (r.via === "wifi" ? "wi-fi" : "cabo") + (vps ? (vpsFora ? " · VPS FORA!" : " · vps ok") : "");

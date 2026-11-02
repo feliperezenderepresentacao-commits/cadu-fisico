@@ -20,12 +20,14 @@ var Mundo3D = (function () {
   var doenteFlag = false, raio, ponteiro, salvarT = null;
   var ultimoToque = 0, AUTO_APOS = 8000, autoEstava = null, tour = false, tTour = 0, TOUR_S = 75, somLigado = true;
 
+  // os 4 lados da Vila agora são jogos do GitHub (abertos pela tela principal, em /static/jogos/)
+  var JOGOS = { torre: "Torre", pacman: "Come-come", tetris: "Tetris", "2048": "2048" };
   var VIZINHOS = {
-    vila: { cima: "ceu", baixo: "mar", esquerda: "horta", direita: "estrada" },
+    vila: { cima: "torre", baixo: "pacman", esquerda: "tetris", direita: "2048" },
     ceu: { baixo: "vila" }, mar: { cima: "vila" }, horta: { direita: "vila" }, estrada: { esquerda: "vila" }
   };
   var NOMES = { vila: "Vila do Cadu", ceu: "Céu das Estrelas", mar: "Fundo do Mar", horta: "Horta", estrada: "Estrada Elétrica" };
-  var ROTA_TOUR = ["vila", "horta", "vila", "mar", "vila", "ceu", "vila", "estrada"], iTour = 0;
+  var ROTA_TOUR = ["torre", "tetris", "2048", "pacman"], iTour = 0;
 
   // ================================================================== utilidades
   function aleat(a, b) { return a + Math.random() * (b - a); }
@@ -51,7 +53,7 @@ var Mundo3D = (function () {
   function moeda(n) { jogo.moedas += n || 1; salvarJogo(); contador(); som("moeda"); }
   function falar(t) { if (opc.falar) opc.falar(t); }
   function agir(a) { if (opc.aoAgir) opc.aoAgir(a); }
-  function hora() { return new Date().getHours() + new Date().getMinutes() / 60; }
+  function hora() { if (window.horaPC) { var t = window.horaPC(); return t.h + t.m / 60; } return new Date().getHours() + new Date().getMinutes() / 60; }
   function periodo() { var h = hora(); return h >= 6 && h < 17 ? "dia" : (h >= 17 && h < 19 ? "tarde" : "noite"); }
 
   // ================================================================== sons retrô (gerados, sem arquivos)
@@ -1019,6 +1021,7 @@ var Mundo3D = (function () {
   }
   function trocarPara(dest) {
     if (!dest || trocando || dest === idAtual) return false;
+    if (JOGOS[dest]) { som("trocar"); if (opc.abrirJogo) opc.abrirJogo(dest, JOGOS[dest]); return true; }
     trocando = true; som("trocar");
     var veu = document.getElementById("veu3d"); if (veu) veu.className = "ver";
     setTimeout(function () { carregar(dest); setTimeout(function () { if (veu) veu.className = ""; trocando = false; }, 90); }, 280);
@@ -1055,7 +1058,7 @@ var Mundo3D = (function () {
     if (auto !== autoEstava) { autoEstava = auto; if (opc.aoAuto) opc.aoAuto(auto); }
     if (atual) { atual.atualizar(dt, auto); if (atual.camera) atual.camera(dt, auto); }
     atualizarParticulas(dt);
-    if (auto && tour && !trocando) { tTour += dt; if (tTour > TOUR_S) { tTour = 0; iTour = (iTour + 1) % ROTA_TOUR.length; if (ROTA_TOUR[iTour] === idAtual) iTour = (iTour + 1) % ROTA_TOUR.length; trocarPara(ROTA_TOUR[iTour]); } }
+    if (auto && tour && !trocando) { tTour += dt; if (tTour > TOUR_S) { tTour = 0; iTour = (iTour + 1) % ROTA_TOUR.length; if (idAtual !== "vila") trocarPara("vila"); else trocarPara(ROTA_TOUR[iTour]); } }
     R.render(cena, cam);
     if (opc.aoQuadro && atual && atual.cadu) {
       var p = new THREE.Vector3(); atual.cadu.getWorldPosition(p); p.y += 1.9; p.project(cam);
@@ -1100,6 +1103,8 @@ var Mundo3D = (function () {
     config: function (c2) {
       if (c2.estilo && ESTILOS[c2.estilo] && c2.estilo !== estiloCadu) { estiloCadu = c2.estilo; if (atual) carregar(idAtual); } if (c2.tour !== undefined) tour = !!c2.tour; if (c2.som !== undefined) somLigado = !!c2.som; if (c2.autoApos) AUTO_APOS = c2.autoApos; },
     autoAgora: function () { ultimoToque = 0; },
+    moedas: function (n) { jogo.moedas += n || 1; salvarJogo(); contador(); },
+    voltouDoJogo: function (tocou) { tTour = 0; if (tocou) ultimoToque = agora(); },
     suportado: function () { try { var c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl"))); } catch (e) { return false; } }
   };
 })();

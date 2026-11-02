@@ -70,7 +70,7 @@ var Mundo = (function () {
   }
 
   // ---------------------------------------------------------------- cenário (desenhado 1x num canvas guardado)
-  function horaDoDia() { return new Date().getHours(); }
+  function horaDoDia() { return window.horaPC ? window.horaPC().h : new Date().getHours(); }
   function corCeu(h) {
     if (h >= 6 && h < 17) return ["#8ecae6", "#bde0fe"];
     if (h >= 17 && h < 19) return ["#f4a261", "#e76f51"];
