@@ -520,6 +520,8 @@ class Handler(BaseHTTPRequestHandler):
                     prefs["estilo"] = pedido["estilo"]
                 if isinstance(pedido.get("eco"), int) and 0 <= pedido["eco"] <= 600:
                     prefs["eco"] = pedido["eco"]
+                if isinstance(pedido.get("ordem"), list) and len(pedido["ordem"]) <= 100:
+                    prefs["ordem"] = [str(x)[:80] for x in pedido["ordem"] if x]
                 for k in ("tour", "som"):
                     if isinstance(pedido.get(k), bool):
                         prefs[k] = pedido[k]

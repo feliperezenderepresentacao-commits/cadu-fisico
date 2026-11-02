@@ -189,6 +189,17 @@
   .legenda { clear: both; padding: 2vmin 1.8vmin 3vmin; font-size: 2.9vmin; color: var(--suave); }
   .opcoes .acao.marcada { background: #3a3215; color: var(--amarelo); }
 
+  /* --- reorganizar botões (segurar → tremem → arrastar), igual ao Android --- */
+  #grade.editando .btn .caixa { -webkit-animation: treme .28s ease-in-out infinite alternate; animation: treme .28s ease-in-out infinite alternate; }
+  #grade.editando .btn:nth-child(2n) .caixa { -webkit-animation-delay: -.14s; animation-delay: -.14s; }
+  #grade.editando .btn:nth-child(3n) .caixa { -webkit-animation-duration: .32s; animation-duration: .32s; }
+  @-webkit-keyframes treme { from { -webkit-transform: rotate(-1.6deg); } to { -webkit-transform: rotate(1.6deg); } }
+  @keyframes treme { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+  .btn.arrastando { position: relative; z-index: 30; pointer-events: none; }
+  .btn.arrastando .caixa { -webkit-animation: none !important; animation: none !important; background: #2a3560; box-shadow: 0 0 0 var(--p) var(--amarelo), 0 2vmin 4vmin rgba(0,0,0,.6); }
+  #pronto { position: absolute; right: 4vmin; bottom: 1.2vmin; height: 7vmin; line-height: 7vmin; padding: 0 3vmin; display: none; color: var(--verde);
+            font-family: "Orbitron", sans-serif; font-size: 3vmin; z-index: 40; }
+  #pronto.ver { display: block; }
   #msg { position: absolute; left: 4vmin; right: 4vmin; bottom: 0; height: 9vmin; line-height: 9vmin; text-align: center;
          font-size: 3.5vmin; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -261,6 +272,7 @@
     </div>
   </div>
   <div id="msg"></div>
+  <div id="pronto" class="caixa">✓ pronto</div>
 </div>
 
 <script src="/static/icones.js"></script>
@@ -541,9 +553,9 @@
   // ---------------------------------------------------------------- MENU e páginas
   comIcone($("voltar"), "chevron-left", "voltar");
   function abrirPainel() { vibrar(20); painel.className = "aberto"; ligarMundos(false); irPagina(0); reiniciarOcioso(); }
-  function fecharPainel() { painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
+  function fecharPainel() { sairEdicao(); painel.className = ""; msg.textContent = ""; try { $("novaCat").blur(); } catch (e) {} ligarMundos(true); }
   function reiniciarOcioso() { clearTimeout(timerOcioso); timerOcioso = setTimeout(fecharPainel, OCIOSO_MS); }
-  window.aoVoltar = function () { if (jogoAberto && !painel.className) return fecharJogo(); if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
+  window.aoVoltar = function () { if (editando) return sairEdicao(); if (jogoAberto && !painel.className) return fecharJogo(); if (!painel.className) return; if (pagina > 0) irPagina(0); else fecharPainel(); };
   $("voltar").addEventListener("click", function (ev) { ev.stopPropagation(); apertar(this); fecharPainel(); });
   var abas = document.querySelectorAll(".aba");
   for (var a = 0; a < abas.length; a++) (function (n) { abas[n].addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(15); irPagina(n); }); })(a);
@@ -560,6 +572,7 @@
   painel.addEventListener("touchstart", function (e) { var t = e.touches[0]; toque = { x: t.clientX, y: t.clientY }; arrastou = false; });
   painel.addEventListener("touchmove", function (e) { if (toque && Math.abs(e.touches[0].clientX - toque.x) > 12) arrastou = true; });
   painel.addEventListener("touchend", function (e) {
+    if (editando) { toque = null; return; }   // reorganizando botões: não troca de página
     if (!toque) return;
     var t = e.changedTouches[0], dx = t.clientX - toque.x, dy = t.clientY - toque.y; toque = null; reiniciarOcioso();
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
@@ -569,7 +582,17 @@
   painel.addEventListener("click", reiniciarOcioso);
 
   // --- página 1: botões
+  var listaBotoes = [], editando = false;
+  function ordenar(lista) {
+    var ordem = prefs.ordem || [];
+    return lista.slice().sort(function (a, b) {
+      var ia = ordem.indexOf(a.id), ib = ordem.indexOf(b.id);
+      if (ia < 0) ia = 999 + lista.indexOf(a); if (ib < 0) ib = 999 + lista.indexOf(b);
+      return ia - ib;
+    });
+  }
   function montarBotoes(lista) {
+    listaBotoes = lista; lista = ordenar(lista);
     var g = $("grade"); g.innerHTML = "";
     // todos os botões cabem na tela: altura de cada linha = 100% / número de linhas
     var colunas = window.innerWidth > window.innerHeight ? 4 : 3, linhas = Math.max(3, Math.ceil(lista.length / colunas));
@@ -580,10 +603,71 @@
       var s = icone(b.icone); if (s) { s.style.color = cor; cx.appendChild(s); } else cx.appendChild(el("div", "rot", b.icone || "?"));
       cx.appendChild(el("div", "rot", b.rotulo || b.id));
       bt.appendChild(cx);
-      bt.addEventListener("click", function (ev) { ev.stopPropagation(); if (!arrastou) acionar(b, bt, cx); });
+      bt.setAttribute("data-id", b.id);
+      bt.addEventListener("click", function (ev) { ev.stopPropagation(); if (!arrastou && !editando && !segurou) acionar(b, bt, cx); });
+      prepararArraste(bt);
       g.appendChild(bt);
     })(lista[i], i);
   }
+  // ---- segurar 0,5 s: entra no modo de reorganizar; arrastar troca de lugar; "✓ pronto" salva
+  var segurou = false, arr = null;
+  function entrarEdicao() {
+    if (editando) return;
+    editando = true; $("grade").className = "editando"; $("pronto").className = "caixa ver";
+    msg.textContent = "Arraste para trocar de lugar"; vibrar(45);
+  }
+  function sairEdicao() {
+    if (!editando) return;
+    editando = false; $("grade").className = ""; $("pronto").className = "caixa";
+    var ids = [], bs = $("grade").children;
+    for (var i = 0; i < bs.length; i++) ids.push(bs[i].getAttribute("data-id"));
+    prefs.ordem = ids; pedir("POST", "/api/prefs", { ordem: ids }, function () {});
+    msg.textContent = "Ordem salva.";
+  }
+  $("pronto").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(20); sairEdicao(); });
+  function prepararArraste(bt) {
+    var timer = null;
+    bt.addEventListener("touchstart", function (e) {
+      var t = e.touches[0]; segurou = false;
+      arr = { bt: bt, x0: t.clientX, y0: t.clientY, ativo: false };
+      if (editando) { iniciarArraste(t); return; }
+      clearTimeout(timer);
+      timer = setTimeout(function () { segurou = true; entrarEdicao(); iniciarArraste({ clientX: arr.x0, clientY: arr.y0 }); }, 520);
+    }, false);
+    bt.addEventListener("touchmove", function (e) {
+      var t = e.touches[0];
+      if (!arr) return;
+      if (!arr.ativo) { if (Math.abs(t.clientX - arr.x0) > 10 || Math.abs(t.clientY - arr.y0) > 10) clearTimeout(timer); return; }
+      e.preventDefault();
+      moverArraste(t);
+    }, false);
+    bt.addEventListener("touchend", function () { clearTimeout(timer); soltarArraste(); setTimeout(function () { segurou = false; }, 50); }, false);
+    bt.addEventListener("touchcancel", function () { clearTimeout(timer); soltarArraste(); }, false);
+  }
+  function iniciarArraste(t) {
+    var r = arr.bt.getBoundingClientRect();
+    arr.ativo = true; arr.dx = t.clientX - r.left; arr.dy = t.clientY - r.top;
+    arr.bt.className = "btn arrastando";
+  }
+  function moverArraste(t) {
+    var bt = arr.bt, g = $("grade");
+    bt.style.webkitTransform = bt.style.transform = "";
+    var alvo = document.elementFromPoint(t.clientX, t.clientY);
+    while (alvo && alvo.parentNode !== g) alvo = alvo.parentNode;
+    if (alvo && alvo !== bt) {
+      var filhos = Array.prototype.slice.call(g.children);
+      if (filhos.indexOf(alvo) < filhos.indexOf(bt)) g.insertBefore(bt, alvo); else g.insertBefore(bt, alvo.nextSibling);
+      vibrar(10);
+    }
+    var r = bt.getBoundingClientRect(), tx = t.clientX - arr.dx - r.left, ty = t.clientY - arr.dy - r.top;
+    bt.style.webkitTransform = bt.style.transform = "translate(" + tx + "px," + ty + "px) scale(1.06)";
+  }
+  function soltarArraste() {
+    if (!arr) return;
+    if (arr.ativo) { arr.bt.style.webkitTransform = arr.bt.style.transform = ""; arr.bt.className = "btn"; }
+    arr = null;
+  }
+
   function acionar(b, bt, cx) {
     reiniciarOcioso(); vibrar(30); apertar(cx); msg.textContent = b.rotulo + "…";
     pedir("POST", "/api/acao", { id: b.id }, function (er, r) {
@@ -856,7 +940,7 @@
   }
 
   // ---------------------------------------------------------------- início
-  pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) prefs = p; aplicarModo(!er && p ? p.tela : "mundo3d"); });
+  pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) { prefs = p; if (listaBotoes.length) montarBotoes(listaBotoes); } aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
   buscarVoz(); brilho(-1);   // ao abrir a tela, o brilho volta ao normal
