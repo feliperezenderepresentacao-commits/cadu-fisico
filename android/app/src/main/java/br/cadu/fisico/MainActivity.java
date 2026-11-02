@@ -51,6 +51,8 @@ public class MainActivity extends Activity {
     private volatile boolean conectado = false;
     private volatile String ipBeacon = null;
     private volatile String urlAtual = null;
+    private volatile boolean carregou = true;
+    private volatile long desde = 0;
     private WifiManager.MulticastLock trava;
 
     @Override
@@ -74,6 +76,12 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Ponte(), "Cadu");
         web.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageFinished(WebView view, String url) {
+                android.util.Log.i("cadu", "página aberta: " + (url == null ? "" : url.replaceAll("t=.*", "t=***")));
+                if (url != null && !url.startsWith("file:")) carregou = true;
+            }
+
+            @Override
             @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int code, String desc, String url) {
                 // PC desligado / cabo solto / Wi-Fi caiu -> rosto offline e volta a procurar
@@ -96,7 +104,7 @@ public class MainActivity extends Activity {
     private void irOffline() {
         conectado = false;
         urlAtual = null;
-        web.post(new Runnable() {
+        runOnUiThread(new Runnable() {
             public void run() { web.loadUrl(URL_OFFLINE); }
         });
     }
@@ -110,12 +118,19 @@ public class MainActivity extends Activity {
                         final String url = acharAgente();
                         if (url != null) {
                             android.util.Log.i("cadu", "conectando " + url.replaceAll("t=.*", "t=***"));
+                            carregou = false;
+                            desde = System.currentTimeMillis();
                             conectado = true;
                             urlAtual = url;
-                            web.post(new Runnable() {
+                            runOnUiThread(new Runnable() {
                                 public void run() { web.loadUrl(url); }
                             });
                         }
+                    }
+                    else if (!carregou && System.currentTimeMillis() - desde > 20000) {
+                        android.util.Log.w("cadu", "a tela do PC não abriu em 20 s — tentando de novo");
+                        diag = "a tela do PC não abriu (tentando de novo)";
+                        conectado = false;
                     }
                     dormir(3000);
                 }
@@ -241,13 +256,13 @@ public class MainActivity extends Activity {
     }
 
     private void avisar(final String texto) {
-        web.post(new Runnable() {
+        runOnUiThread(new Runnable() {
             public void run() { Toast.makeText(MainActivity.this, texto, Toast.LENGTH_LONG).show(); }
         });
     }
 
     private void abrir(final String acao) {
-        web.post(new Runnable() {
+        runOnUiThread(new Runnable() {
             public void run() {
                 try {
                     Intent i = new Intent(acao);
@@ -286,7 +301,7 @@ public class MainActivity extends Activity {
     }
 
     private void js(final String codigo) {
-        web.post(new Runnable() { public void run() { web.evaluateJavascript("window." + codigo.replaceFirst("^", ""), null); } });
+        runOnUiThread(new Runnable() { public void run() { web.evaluateJavascript("window." + codigo.replaceFirst("^", ""), null); } });
     }
 
     // ------------------------------------------------------------------ ponte JS
@@ -305,7 +320,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.2-eco"; }
+        public String versao() { return "0.9.3-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -443,7 +458,7 @@ public class MainActivity extends Activity {
         /** Brilho da tela só deste app (0.01–1); valor negativo = volta ao brilho do sistema. Usado no modo economia (olhos). */
         @JavascriptInterface
         public void brilho(final float v) {
-            web.post(new Runnable() { public void run() {
+            runOnUiThread(new Runnable() { public void run() {
                 WindowManager.LayoutParams lp = getWindow().getAttributes();
                 lp.screenBrightness = v < 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : Math.max(0.01f, Math.min(1f, v));
                 getWindow().setAttributes(lp);
