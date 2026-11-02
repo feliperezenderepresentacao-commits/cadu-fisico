@@ -7,6 +7,7 @@ Cada conversa grava um arquivo no ramo "status" do repositório no GitHub:
 do git (sem o limite de 60 chamadas/hora da API) e só quando muda lista a pasta e baixa os arquivos.
 """
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -68,6 +69,12 @@ class Conversa:
                 return None
             raise
 
+    def _nomes_feed(self, repo):
+        req = urllib.request.Request("https://github.com/%s/commits/status.atom" % repo, headers={"User-Agent": "cadu-fisico"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            texto = r.read().decode("utf-8", "ignore")
+        return re.findall(r"<title>\s*status ([a-z0-9-]+):", texto)
+
     def _atualizar(self):
         repo = self.cfg_fn().get("status_github") or REPO
         sha = self._sha_ramo(repo)
@@ -79,9 +86,12 @@ class Conversa:
             _, itens = self._get((API % (repo, "sessoes")).replace("ref=status", "ref=" + sha))
             nomes = [it["name"] for it in itens if it.get("name", "").endswith(".json")]
         except Exception as e:
-            self.log("[conversa] API do GitHub recusou a lista (%s); relendo as conversas conhecidas" % e)
-            nomes = [n + ".json" for n in self.sessoes]
+            # sem a API (limite de 60/h): descobre as conversas pelo feed de commits do ramo (sem limite)
+            self.log("[conversa] API do GitHub recusou a lista (%s); usando o feed de commits" % e)
+            nomes = sorted(set([n + ".json" for n in self.sessoes] + [n + ".json" for n in self._nomes_feed(repo)]))
             itens = None
+            if not nomes:
+                return []      # tenta de novo na próxima volta
         mudadas, vistos = [], set()
         for arq in nomes:
             nome = arq[:-5]
