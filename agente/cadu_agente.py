@@ -416,6 +416,7 @@ def main():
     threading.Thread(target=manter_tunel_usb, args=(porta,), daemon=True).start()
     threading.Thread(target=anunciar_na_rede, args=(porta,), daemon=True).start()
     threading.Thread(target=NOTICIAS.rodar, daemon=True).start()
+    log("[chrome] perfis encontrados: %s" % ", ".join("%s (%s)" % (p["nome"], p["dir"]) for p in chrome.listar_perfis()))
     log("Cadu agente rodando na porta %d — cabo e Wi-Fi (%s)  (Ctrl+C para parar)"
         % (porta, ", ".join(ips_locais()) or "sem rede"))
     try:

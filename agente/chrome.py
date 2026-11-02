@@ -97,10 +97,12 @@ def botoes(cfg):
         ordem = [_sem_acento(x) for x in somente]
         perfis = sorted([p for p in perfis if _sem_acento(p["nome"]) in ordem], key=lambda p: ordem.index(_sem_acento(p["nome"])))
     ocultar = {_sem_acento(x) for x in conf.get("ocultar", [])}
-    saida = []
+    saida, vistos = [], set()
     for p in perfis:
-        if _sem_acento(p["nome"]) in ocultar:
-            continue
+        chave = _sem_acento(p["nome"])
+        if chave in ocultar or (somente and chave in vistos):
+            continue  # com "somente", vale só o 1º perfil de cada nome (há perfis com nome repetido)
+        vistos.add(chave)
         rotulo = _conf_por_nome(conf.get("rotulos"), p["nome"]) or p["nome"]
         saida.append({"id": "chrome:" + p["dir"], "rotulo": rotulo,
                       "icone": _conf_por_nome(conf.get("icones"), p["nome"]) or icone_para(rotulo),
