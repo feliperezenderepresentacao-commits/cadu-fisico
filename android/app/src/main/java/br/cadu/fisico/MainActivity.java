@@ -101,7 +101,25 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------------ conexão
+    /** Devolve o brilho ao controle do Android (a barra de brilho volta a funcionar). */
+    private void brilhoNormal() {
+        runOnUiThread(new Runnable() { public void run() {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            if (lp.screenBrightness != WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE) {
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
+                getWindow().setAttributes(lp);
+            }
+        } });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        brilhoNormal();  // ao voltar para o app (ex.: depois de mexer na barra de brilho), nunca fica preso no escuro
+    }
+
     private void irOffline() {
+        brilhoNormal();
         conectado = false;
         urlAtual = null;
         runOnUiThread(new Runnable() {
@@ -320,7 +338,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.3-eco"; }
+        public String versao() { return "0.9.4-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface

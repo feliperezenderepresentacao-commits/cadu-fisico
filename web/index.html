@@ -500,7 +500,7 @@
   // Duplo toque: jogos ⇄ olhos (tela escura + brilho baixo). Sozinho depois de X min sem toque.
   var ecoDe = null, ultimaAtividade = Date.now(), toqueAnt = null;
   function brilho(v) { ponte(function () { Cadu.brilho(v); }); }
-  function ajustarBrilho() { brilho(document.body.className.indexOf(" eco") >= 0 && !urgente ? 0.03 : -1); }
+  function ajustarBrilho() { brilho(document.body.className.indexOf(" eco") >= 0 && !urgente ? 0.1 : -1); }
   function eco(sim) {
     if (sim) {
       if (modoTela === "olhos" && document.body.className.indexOf(" eco") >= 0) return;
