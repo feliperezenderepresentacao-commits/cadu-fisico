@@ -125,7 +125,14 @@ def anunciar_na_rede(porta):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            s.sendto(msg, ("255.255.255.255", PORTA_BEACON))
+            # 255.255.255.255 no Windows sai só pela placa "principal"; manda também para a sub-rede de
+            # cada placa (x.y.z.255), para achar o celular mesmo em outra rede ou com VPN/placas virtuais
+            alvos = ["255.255.255.255"] + [ip.rsplit(".", 1)[0] + ".255" for ip in ips_locais() if ip.count(".") == 3]
+            for alvo in dict.fromkeys(alvos):
+                try:
+                    s.sendto(msg, (alvo, PORTA_BEACON))
+                except Exception:
+                    pass
             s.close()
         except Exception:
             pass
