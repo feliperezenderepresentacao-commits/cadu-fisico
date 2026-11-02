@@ -26,11 +26,23 @@ MODELO_VOSK = PASTA / "modelos" / "vosk-pt"
 PORTA_VOZ = 8767
 TAXA = 16000
 # como a palavra "Cadu" costuma sair na transcrição
-CHAMADOS = re.compile(r"\b(cadu|cadú|kadu|cadum|cadus|ca du|cad u|catu|cadê|cade|caju|cádu|kadú|cad|cadi|cadão|kadi|ca[dt]u\w*|ka[dt]u\w*|garu|cardo|canudo|cabo)\b")
+CHAMADOS = re.compile(r"\b(cadu|cadú|kadu|kadú|cádu|cadum|cadus|ca du|cad u|cadê|cade|caju)\b")
 
 
 def sem_acento(s):
     return "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn").lower()
+
+
+def parece_chamado(texto_vosk):
+    """Filtro rápido no texto do Vosk (que escreve "Cadu" errado): primeira ou segunda palavra
+    parecida com "cadu", ou um pedido de lembrete. Quem confirma de verdade é o Whisper."""
+    p = sem_acento(texto_vosk).split()
+    if re.search(r"\b(lembr|lembrete|anota)", " ".join(p)):
+        return True
+    for w in p[:2]:
+        if re.match(r"^(c|k|g)a[a-z]{0,5}$", w) or w in ("dor", "du", "tu", "cadu"):
+            return True
+    return False
 
 
 def tem_chamado(texto, so_no_comeco=False):
@@ -49,6 +61,7 @@ class Ouvido:
         self.vosk_modelo = None
         self.whisper = None
         self.ocupado = False
+        self.espera_ate = 0
         agenda.falar_no_celular = self.falar
 
     # ------------------------------------------------ modelos
@@ -141,11 +154,14 @@ class Ouvido:
 
     # ------------------------------------------------ escuta contínua
     def escutar(self, c):
+        """Ouve frase por frase (o Vosk corta nas pausas). Se a frase parece começar com "Cadu"
+        (o Vosk costuma escrever "casou", "cadê", "dor"…), o Whisper confere e transcreve direito.
+        Dois jeitos de falar:  "Cadu, me lembra…" (tudo junto)  ou  "Cadu" … (apito) … "me lembra…"."""
         import numpy as np
+        from vosk import KaldiRecognizer
         rec = None
-        preroll = deque(maxlen=int(2.5 * TAXA / 1024) + 1)   # ~2,5 s antes do "Cadu"
-        captura, falando, silencio, desde_chamado = None, False, 0.0, 0.0
-        piso = 300.0
+        frase = []                       # áudio da frase atual (desde a última pausa)
+        anterior = deque(maxlen=8)       # ~0,5 s antes da frase, para não cortar o começo
         nivel_soma, nivel_n, nivel_t = 0.0, 0, time.time()
         depurar = (self.cfg_fn().get("voz") or {}).get("depurar", True)
         resto = b""
@@ -158,63 +174,62 @@ class Ouvido:
             resto = dados[n:]
             for i in range(0, n, 2048):
                 bloco = dados[i:i + 2048]
-                dur = 1024 / TAXA
-                amostras = np.frombuffer(bloco, dtype=np.int16)
-                rms = float(np.sqrt(np.mean(amostras.astype(np.float32) ** 2))) if len(amostras) else 0.0
-                voz = rms > max(350.0, piso * 2.6)
-                if not voz and captura is None:
-                    piso = piso * 0.98 + rms * 0.02
-                if captura is not None:          # gravando a frase depois do "Cadu"
-                    captura.append(bloco)
-                    desde_chamado += dur
-                    if voz:
-                        falando, silencio = True, 0.0
-                    else:
-                        silencio += dur
-                    fim = (falando and silencio > 1.1) or desde_chamado > 14 or (not falando and desde_chamado > 4)
-                    if fim:
-                        audio = b"".join(captura)
-                        captura = None
-                        self.estado["ouvindo"] = False
-                        threading.Thread(target=self.entender, args=(audio,), daemon=True).start()
-                    continue
-                preroll.append(bloco)
-                nivel_soma += rms; nivel_n += 1
-                if depurar and time.time() - nivel_t > 60:   # diagnóstico: o áudio está chegando?
-                    self.log("[voz] microfone: nível médio %d (fundo %d)" % (nivel_soma / max(1, nivel_n), piso))
+                a = np.frombuffer(bloco, dtype=np.int16).astype(np.float32)
+                nivel_soma += float(np.sqrt(np.mean(a * a))) if len(a) else 0.0
+                nivel_n += 1
+                if depurar and time.time() - nivel_t > 60:
+                    self.log("[voz] microfone: nível médio %d" % (nivel_soma / max(1, nivel_n)))
                     nivel_soma, nivel_n, nivel_t = 0.0, 0, time.time()
-                if self.vosk_modelo is None or self.whisper is None or self.ocupado:
+                if self.vosk_modelo is None or self.whisper is None:
                     continue
                 if rec is None:
-                    from vosk import KaldiRecognizer
                     rec = KaldiRecognizer(self.vosk_modelo, TAXA)
-                if rec.AcceptWaveform(bloco):
-                    texto = json.loads(rec.Result()).get("text", "")
-                    if depurar and texto:
-                        self.log("[voz] vosk ouviu: %s" % texto)
-                else:
-                    texto = json.loads(rec.PartialResult()).get("partial", "")
-                if texto and tem_chamado(texto):
-                    rec.Reset()
-                    self.enviar("BIP")
-                    self.estado["ouvindo"] = True
-                    captura, falando, silencio, desde_chamado = list(preroll), False, 0.0, 0.0
-                    preroll.clear()
+                if not frase:
+                    frase.extend(anterior)
+                frase.append(bloco)
+                if len(frase) > int(20 * TAXA / 1024):   # frase longa demais: recomeça
+                    frase = frase[-int(10 * TAXA / 1024):]
+                if not rec.AcceptWaveform(bloco):
+                    continue
+                texto = json.loads(rec.Result()).get("text", "")
+                audio, frase = b"".join(frase), []
+                anterior.clear()
+                anterior.extend([bloco])
+                if not texto:
+                    continue
+                if depurar:
+                    self.log("[voz] vosk ouviu: %s" % texto)
+                esperando = time.time() < self.espera_ate
+                if self.ocupado:
+                    continue
+                if esperando or parece_chamado(texto):
+                    threading.Thread(target=self.entender, args=(audio, esperando), daemon=True).start()
 
-    def entender(self, audio):
+    def entender(self, audio, ja_chamado=False):
         import numpy as np
         self.ocupado = True
         try:
             sinal = np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0
             segs, _ = self.whisper.transcribe(sinal, language="pt", beam_size=1, vad_filter=False,
-                                              initial_prompt="Cadu, me lembra amanhã às 9h de pagar a conta.")
+                                              initial_prompt="Conversa com o Cadu.")
             texto = " ".join(s.text.strip() for s in segs).strip()
             self.log("[voz] ouvi: %r" % texto)
-            if not texto or not tem_chamado(texto, so_no_comeco=True):
-                self.enviar("ERRO")       # alarme falso (não era "Cadu" de verdade) ou não entendeu
+            if not texto:
                 return
+            if not ja_chamado:
+                pedido = re.match(r"^\W*(me lembr|lembr|anot|cria um lembrete|lembrete)", sem_acento(texto))
+                if not tem_chamado(texto, so_no_comeco=True) and not pedido:
+                    return                      # não era com o Cadu: ignora quieto
+                resto = re.sub(r"[^\w ]", " ", texto).split()
+                if len(resto) <= 2:             # disse só "Cadu": apita e espera a frase
+                    self.espera_ate = time.time() + 8
+                    self.estado["ouvindo"] = True
+                    self.enviar("BIP")
+                    return
+            self.espera_ate = 0
+            self.estado["ouvindo"] = False
             self.estado["ultimo"] = texto
-            fala, _nota = self.agenda.processar(texto)
+            fala, _nota = self.agenda.processar(texto if not ja_chamado else "Cadu, " + texto)
             self.enviar("OK " + fala)
             self.falar(fala)
         except Exception as e:
@@ -222,3 +237,5 @@ class Ouvido:
             self.enviar("ERRO")
         finally:
             self.ocupado = False
+            if time.time() >= self.espera_ate:
+                self.estado["ouvindo"] = False
