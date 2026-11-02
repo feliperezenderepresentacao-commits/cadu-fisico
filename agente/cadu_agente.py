@@ -426,6 +426,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/pet":
                 msg, estado = PET.agir(pedido.get("acao"))
                 return self._json({"ok": True, "msg": msg, "pet": estado})
+            if u.path == "/api/notas/piscar":
+                return self._json({"ok": AGENDA.piscar(int(pedido.get("id") or 0))})
+            if u.path == "/api/notas/adiar":
+                AGENDA.adiar(int(pedido.get("id") or 0), max(1, min(24 * 60, int(pedido.get("min") or 10))))
+                return self._json({"ok": True})
             if u.path == "/api/notas/feito":
                 AGENDA.feito(int(pedido.get("id") or 0))
                 return self._json({"ok": True})

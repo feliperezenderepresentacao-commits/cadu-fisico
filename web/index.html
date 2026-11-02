@@ -7,7 +7,7 @@
 <!--
   Interface do Cadu físico — tema pixel (console portátil retrô).
   Tela principal: o MUNDO do Cadu (bichinho estilo Tamagotchi) ou os OLHOS (escolha em Ajustes).
-  Menu: Botões ⇄ Notícias ⇄ Ajustes (deslizando).
+  Menu: Botões ⇄ Post-its ⇄ Notícias ⇄ Ajustes (deslizando).
   Fontes: Silkscreen e Pixelify Sans (OFL). Ícones: Pixelarticons (MIT). JS em ES5.
 -->
 <link rel="preload" href="/static/fontes/pixelify-sans-latin-400-normal.woff" as="font" type="font/woff" crossorigin>
@@ -136,9 +136,23 @@
   .ponto { display: inline-block; width: 2.2vmin; height: 2.2vmin; margin: 0 1.2vmin 0 3vmin; background: var(--apagado); }
   .ponto.ok { background: var(--verde); } .ponto.erro { background: var(--rosa); }
 
-  #trilho { position: absolute; top: 13vmin; bottom: 9vmin; left: 0; width: 300%; -webkit-transition: -webkit-transform .25s steps(5); transition: transform .25s steps(5); }
-  .pagina { position: absolute; top: 0; bottom: 0; width: 33.3333%; padding: 0 3vmin; }
-  .pagina.p2 { left: 33.3333%; } .pagina.p3 { left: 66.6667%; }
+  #trilho { position: absolute; top: 13vmin; bottom: 9vmin; left: 0; width: 400%; -webkit-transition: -webkit-transform .25s steps(5); transition: transform .25s steps(5); }
+  .pagina { position: absolute; top: 0; bottom: 0; width: 25%; padding: 0 3vmin; }
+  .pagina.p2 { left: 25%; } .pagina.p3 { left: 50%; } .pagina.p4 { left: 75%; }
+  /* --- post-its --- */
+  #novaNota { -webkit-flex: 1; flex: 1; height: 8vmin; border: 0; background: var(--fundo); color: var(--texto); font-family: "Pixelify", monospace;
+              font-size: 3.5vmin; padding: 0 3vmin; outline: none; -webkit-user-select: text; user-select: text; box-shadow: inset 0 0 0 var(--p) var(--borda); }
+  .pi { float: left; width: 33.333%; padding: 1.8vmin; }
+  .pi > div { position: relative; height: 27vmin; padding: 2vmin 2.4vmin; color: #2b2142; overflow: hidden;
+              box-shadow: 0 calc(-1 * var(--p)) 0 0 rgba(0,0,0,.25), 0 var(--p) 0 0 rgba(0,0,0,.35), calc(-1 * var(--p)) 0 0 0 rgba(0,0,0,.25), var(--p) 0 0 0 rgba(0,0,0,.25); }
+  .pi.nota > div { background: #ffe58f; } .pi.lembrete > div { background: #9fd3ff; } .pi.alarme > div { background: #ff9b93; }
+  .pi .q { font-family: "Silkscreen", monospace; font-size: 2.4vmin; text-transform: uppercase; opacity: .75; }
+  .pi .tx { font-size: 3.6vmin; margin-top: 1.2vmin; line-height: 1.25; max-height: 13.5vmin; overflow: hidden; }
+  .pi .ok { position: absolute; right: 1.4vmin; bottom: 1.4vmin; padding: .8vmin 1.8vmin; background: rgba(0,0,0,.18); font-size: 2.8vmin; }
+  .pi .tocar { position: absolute; left: 2.4vmin; bottom: 1.8vmin; font-size: 2.4vmin; opacity: .7; }
+  .pi.piscando > div { -webkit-animation: piscaP .25s steps(2) 6; animation: piscaP .25s steps(2) 6; }
+  @-webkit-keyframes piscaP { 50% { background: #fff; } } @keyframes piscaP { 50% { background: #fff; } }
+  #semNotas { text-align: center; color: var(--suave); font-size: 3.6vmin; margin-top: 12vmin; line-height: 1.6; }
 
   /* --- botões --- */
   #grade { height: 100%; overflow-y: auto; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-align-content: flex-start; align-content: flex-start; }
@@ -221,19 +235,26 @@
 <div id="painel">
   <div id="topo">
     <div id="voltar" class="caixa"></div>
-    <div id="abas"><span class="aba ativa">Botões</span><span class="aba">Notícias</span><span class="aba">Ajustes</span></div>
+    <div id="abas"><span class="aba ativa">Botões</span><span class="aba">Post-its</span><span class="aba">Notícias</span><span class="aba">Ajustes</span></div>
     <div id="direita"><span class="ponto" id="pVps"></span><span id="tVia">cabo</span></div>
   </div>
   <div id="trilho">
     <div class="pagina p1"><div id="grade"></div></div>
     <div class="pagina p2">
       <div class="cab">
+        <input id="novaNota" type="text" maxlength="200" placeholder="escreva um post-it… (ou diga &quot;Cadu, anota…&quot;)">
+        <span class="acao caixa" id="addNota"></span>
+      </div>
+      <div class="lista" id="notas"></div>
+    </div>
+    <div class="pagina p3">
+      <div class="cab">
         <input id="novaCat" type="text" maxlength="60" placeholder="nova categoria (palavra-chave)">
         <span class="acao caixa" id="addCat"></span>
       </div>
       <div class="lista" id="cats"></div>
     </div>
-    <div class="pagina p3">
+    <div class="pagina p4">
       <div class="lista" id="ajustes" style="top:0"></div>
     </div>
   </div>
@@ -481,11 +502,12 @@
   for (var a = 0; a < abas.length; a++) (function (n) { abas[n].addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(15); irPagina(n); }); })(a);
   function irPagina(p) {
     pagina = p;
-    var t = "translateX(" + (-100 / 3 * p) + "%)";
+    var t = "translateX(" + (-100 / 4 * p) + "%)";
     trilho.style.webkitTransform = t; trilho.style.transform = t;
     for (var i = 0; i < abas.length; i++) abas[i].className = "aba" + (i === p ? " ativa" : "");
-    if (p === 1) carregarCategorias();
-    if (p === 2) montarAjustes();
+    if (p === 1) carregarNotas();
+    if (p === 2) carregarCategorias();
+    if (p === 3) montarAjustes();
   }
   var toque = null, arrastou = false;
   painel.addEventListener("touchstart", function (e) { var t = e.touches[0]; toque = { x: t.clientX, y: t.clientY }; arrastou = false; });
@@ -494,7 +516,7 @@
     if (!toque) return;
     var t = e.changedTouches[0], dx = t.clientX - toque.x, dy = t.clientY - toque.y; toque = null; reiniciarOcioso();
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0 && pagina < 2) { irPagina(pagina + 1); vibrar(15); } else if (dx > 0 && pagina > 0) { irPagina(pagina - 1); vibrar(15); }
+      if (dx < 0 && pagina < 3) { irPagina(pagina + 1); vibrar(15); } else if (dx > 0 && pagina > 0) { irPagina(pagina - 1); vibrar(15); }
     }
   });
   painel.addEventListener("click", reiniciarOcioso);
@@ -649,6 +671,40 @@
   $("codigoOk").addEventListener("click", function (e) { e.stopPropagation(); $("codigoMsg").textContent = "Conferindo…"; ponte(function () { Cadu.enviarCodigo($("codigoIn").value); }); });
   $("codigoOutro").addEventListener("click", function (e) { e.stopPropagation(); $("codigoMsg").textContent = "Procurando o PC…"; ponte(function () { Cadu.pedirCodigo(); }); });
   $("codigoSair").addEventListener("click", function (e) { e.stopPropagation(); $("codigoCx").className = "caixa"; });
+  // ---------------------------------------------------------------- POST-ITS (mesmos do PC)
+  function carregarNotas() {
+    pedir("GET", "/api/notas", null, function (er, l) {
+      var L = $("notas"); L.innerHTML = "";
+      if (er || !l) { L.appendChild(el("div", null, "Sem conexão com o PC.")).id = "semNotas"; return; }
+      if (!l.length) { var v = el("div", null, "Nenhum post-it.\nDiga \"Cadu, me lembra…\" ou escreva acima."); v.id = "semNotas"; v.style.whiteSpace = "pre-line"; L.appendChild(v); return; }
+      l.sort(function (a, b) { return (b.disparado - a.disparado) || ((a.quando || 9e12) - (b.quando || 9e12)) || (b.criado - a.criado); });
+      for (var i = 0; i < l.length; i++) (function (n) {
+        var tipo = n.disparado ? "alarme" : (n.quando ? "lembrete" : "nota");
+        var pi = el("div", "pi " + tipo), c = el("div");
+        c.appendChild(el("div", "q", (n.disparado ? "⏰ agora · " : "") + (n.quando_txt || "anotação")));
+        c.appendChild(el("div", "tx", n.texto));
+        c.appendChild(el("div", "tocar", "toque: piscar no PC"));
+        var ok = el("span", "ok", "✓ feito");
+        ok.addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(30); pedir("POST", "/api/notas/feito", { id: n.id }, function () { carregarNotas(); }); });
+        c.appendChild(ok); pi.appendChild(c);
+        pi.addEventListener("click", function (ev) {
+          ev.stopPropagation(); vibrar(20);
+          pi.className = "pi " + tipo; void pi.offsetWidth; pi.className = "pi " + tipo + " piscando";
+          pedir("POST", "/api/notas/piscar", { id: n.id }, function (er2) { msg.textContent = er2 ? "PC não respondeu." : "Post-it piscando no PC."; });
+        });
+        L.appendChild(pi);
+      })(l[i]);
+    });
+  }
+  comIcone($("addNota"), "plus", "anotar");
+  function anotarDigitado() {
+    var t = $("novaNota").value.trim(); if (!t) return;
+    vibrar(20); $("novaNota").value = "";
+    pedir("POST", "/api/voz/frase", { frase: t }, function (er, r) { msg.textContent = r && r.fala ? r.fala : "Falhou."; carregarNotas(); });
+  }
+  $("addNota").addEventListener("click", function (ev) { ev.stopPropagation(); anotarDigitado(); });
+  $("novaNota").addEventListener("keydown", function (ev) { if (ev.keyCode === 13) anotarDigitado(); });
+
   function trocarModo(m) {
     pedir("POST", "/api/prefs", { tela: m }, function () {});
     aplicarModo(m); ligarMundos(false); montarAjustes(); msg.textContent = "Tela de descanso: " + ({ mundo3d: "5 mundos 3D", mundo: "quarto pixel", olhos: "olhos" }[m]) + ".";
@@ -709,7 +765,7 @@
           var e = r.eventos[i];
           if (e.tipo === "disparo") mostrarUrgente({ catNome: "⏰ Lembrete", titulo: e.texto, fonte: "Cadu", k: null });
           else if (e.tipo === "pergunta") falar(e.resposta || "Hmm…");
-          else { falar("Anotei! " + e.texto + (e.quando_txt ? " · " + e.quando_txt : "")); if (window.Mundo3D && m3d) Mundo3D.surpreso(); }
+          else { if (pagina === 1 && painel.className) carregarNotas(); falar("Anotei! " + e.texto + (e.quando_txt ? " · " + e.quando_txt : "")); if (window.Mundo3D && m3d) Mundo3D.surpreso(); }
         }
         seqVoz = r.seq;
       }

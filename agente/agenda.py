@@ -227,6 +227,29 @@ class Agenda:
         if p and p.poll() is None:
             p.terminate()
 
+    def piscar(self, nid):
+        """Pede para o post-it do PC piscar e vir para a frente (abre de novo se tinha sido fechado)."""
+        alvo = None
+        with self.trava:
+            for n in self.notas:
+                if n["id"] == nid and not n["feito"]:
+                    n["piscar"] = time.time()
+                    alvo = n
+            self._salvar()
+        if alvo:
+            self.abrir_postit(alvo, 0)
+        return bool(alvo)
+
+    def adiar(self, nid, minutos=10):
+        with self.trava:
+            for n in self.notas:
+                if n["id"] == nid:
+                    n["quando"] = time.time() + minutos * 60
+                    n["disparado"] = False
+                    if n["tipo"] == "nota":
+                        n["tipo"] = "lembrete"
+            self._salvar()
+
     def lista(self):
         with self.trava:
             pend = [n for n in self.notas if not n["feito"]]
@@ -272,10 +295,7 @@ class Agenda:
                 self.log("[agenda] LEMBRETE #%d: %s" % (n["id"], n["texto"]))
                 notificar("⏰ Lembrete do Cadu", n["texto"])
                 self._evento(tipo="disparo", texto=n["texto"], id=n["id"])
-                p = self.postits.pop(n["id"], None)
-                if p and p.poll() is None:
-                    p.terminate()
-                self.abrir_postit(n, 0)
+                self.piscar(n["id"])
                 if self.falar_no_celular:
                     self.falar_no_celular("Felipe, lembrete: " + n["texto"])
             time.sleep(10)
