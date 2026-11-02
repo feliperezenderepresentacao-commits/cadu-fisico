@@ -40,7 +40,7 @@ CONFIG = PASTA / "config.json"
 ARQ_TOKEN = PASTA / "token.txt"
 ARQ_PREFS = PASTA / "prefs.json"
 ARQ_JOGO = PASTA / "jogo.json"
-PREFS_PADRAO = {"tela": "mundo3d"}
+PREFS_PADRAO = {"tela": "mundo3d", "tour": True, "som": True}
 
 
 def ler_prefs():
@@ -365,6 +365,9 @@ class Handler(BaseHTTPRequestHandler):
                 prefs = ler_prefs()
                 if pedido.get("tela") in ("mundo3d", "mundo", "olhos"):
                     prefs["tela"] = pedido["tela"]
+                for k in ("tour", "som"):
+                    if isinstance(pedido.get(k), bool):
+                        prefs[k] = pedido[k]
                 ARQ_PREFS.write_text(json.dumps(prefs), encoding="utf-8")
                 return self._json({"ok": True, "prefs": prefs})
             if u.path == "/api/jogo":

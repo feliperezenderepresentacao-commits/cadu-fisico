@@ -39,6 +39,9 @@
   #veu3d { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #0d1020; opacity: 0; pointer-events: none;
            -webkit-transition: opacity .25s steps(4); transition: opacity .25s steps(4); }
   #veu3d.ver { opacity: 1; }
+  #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Silkscreen", monospace; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
+  body.modo-3d #auto3d.ver { display: block; -webkit-animation: pisca 1.6s steps(2) infinite; animation: pisca 1.6s steps(2) infinite; }
+  @-webkit-keyframes pisca { 50% { opacity: .55; } } @keyframes pisca { 50% { opacity: .55; } }
   #nomeMundo { position: absolute; top: 3vmin; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); text-align: center; display: none; pointer-events: none; }
   body.modo-3d #nomeMundo { display: block; }
   #nomeMundo .t { font-family: "Silkscreen", monospace; font-size: 3.6vmin; text-transform: uppercase; color: var(--amarelo); text-shadow: var(--p) var(--p) 0 #000; }
@@ -181,6 +184,7 @@
   <canvas id="mundo"></canvas>
   <div id="cena3d"></div>
   <div id="veu3d"></div>
+  <div id="auto3d" class="caixa">AUTO</div>
   <div id="nomeMundo"><div class="t" id="nmT"></div><div class="c" id="nmC"></div></div>
   <div class="dica" id="dCima"></div><div class="dica" id="dBaixo"></div><div class="dica" id="dEsq"></div><div class="dica" id="dDir"></div>
   <div id="hud" class="caixa">
@@ -340,7 +344,7 @@
   Mundo.iniciar($("mundo"), { aoAgir: agirPet, aoQuadro: seguirPet, margemBaixo: 26 });
 
   // ---------------------------------------------------------------- MUNDOS 3D (carregados só quando usados)
-  var m3d = false;
+  var m3d = false, prefs = { tour: true, som: true };
   var SETAS = { cima: ["dCima", "arrow-up"], baixo: ["dBaixo", "arrow-down"], esquerda: ["dEsq", "arrow-left"], direita: ["dDir", "arrow-right"] };
   var NOMES3D = { vila: "Vila do Cadu", ceu: "Céu", mar: "Mar", horta: "Horta", estrada: "Estrada" };
   function carregarScript(src, cb) { var s = document.createElement("script"); s.src = src; s.onload = function () { cb(); }; s.onerror = function () { cb(true); }; document.body.appendChild(s); }
@@ -355,6 +359,7 @@
           salvar: function (j) { pedir("POST", "/api/jogo", { jogo: j }); },
           aoContador: function (t) { $("nmC").textContent = t; },
           semSaida: function () { falar("Por aqui não tem caminho."); },
+          aoAuto: function (sim) { $("auto3d").className = sim ? "caixa ver" : "caixa"; },
           aoMundo: function (id, nome, viz, ferr) {
             $("nmT").textContent = nome;
             for (var d in SETAS) {
@@ -374,6 +379,7 @@
           }
         });
         m3d = true;
+        Mundo3D.config({ tour: prefs.tour !== false, som: prefs.som !== false });
         pedir("GET", "/api/jogo", null, function (er, j) { if (!er && j) Mundo3D.jogo(j); });
         if (petEstado) Mundo3D.estado(petEstado);
         cb();
@@ -533,6 +539,14 @@
       { texto: "3D", icone: "map", marcada: modoTela === "mundo3d", fn: function () { trocarModo("mundo3d"); } },
       { texto: "pixel", icone: "home", marcada: modoTela === "mundo", fn: function () { trocarModo("mundo"); } },
       { texto: "olhos", icone: "eye", marcada: modoTela === "olhos", fn: function () { trocarModo("olhos"); } }]);
+    if (modoTela === "mundo3d") {
+      itemAjuste(L, "Passeio automático", prefs.tour !== false ? "ligado: sozinho, ele visita os 5 mundos" : "desligado: fica no mundo atual", [
+        { texto: "ligar", icone: "map", marcada: prefs.tour !== false, fn: function () { mudarPref("tour", true); } },
+        { texto: "desligar", icone: "close", marcada: prefs.tour === false, fn: function () { mudarPref("tour", false); } }]);
+      itemAjuste(L, "Sons dos jogos", prefs.som !== false ? "ligados" : "mudos", [
+        { texto: "ligar", icone: "music", marcada: prefs.som !== false, fn: function () { mudarPref("som", true); } },
+        { texto: "mudo", icone: "volume-x", marcada: prefs.som === false, fn: function () { mudarPref("som", false); } }]);
+    }
     itemAjuste(L, "Wi-Fi do celular", rede ? (!rede.wifiLigado ? "desligado" : (rede.rede ? rede.rede + " · " + rede.ip : "ligado, sem rede")) : "—", [
       { texto: "abrir", icone: "wifi", fn: function () { ponte(function () { Cadu.abrirWifi(); }); } }]);
     itemAjuste(L, "Conexão com o PC", (T ? "pelo Wi-Fi" : "pelo cabo") + (rede ? (rede.pareado ? " · pareado" : " · não pareado") : ""), [
@@ -549,6 +563,12 @@
       { texto: "abrir", icone: "gear", fn: function () { ponte(function () { Cadu.abrirAjustes(); }); } }]);
     itemAjuste(L, "Versão", "app " + (ponte(function () { return Cadu.versao(); }) || "?"), [
       { texto: "recarregar", icone: "refresh", fn: function () { ponte(function () { Cadu.recarregar(); }); } }]);
+  }
+  function mudarPref(k, v) {
+    var d = {}; d[k] = v; prefs[k] = v;
+    pedir("POST", "/api/prefs", d, function () {});
+    if (m3d) Mundo3D.config(d);
+    montarAjustes();
   }
   function trocarModo(m) {
     pedir("POST", "/api/prefs", { tela: m }, function () {});
@@ -628,7 +648,7 @@
   }
 
   // ---------------------------------------------------------------- início
-  pedir("GET", "/api/prefs", null, function (er, p) { aplicarModo(!er && p ? p.tela : "mundo3d"); });
+  pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) prefs = p; aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();
