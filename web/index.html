@@ -47,21 +47,25 @@
   #codigoCx.ver { display: block; } #codigoMsg { margin: 2vmin 0; color: var(--suave); }
   #codigoIn { width: 40vmin; font-size: 7vmin; letter-spacing: 2vmin; text-align: center; background: var(--fundo); color: #fff; border: var(--p) solid var(--borda); padding: 1vmin; margin-bottom: 2vmin; font-family: "Orbitron", sans-serif; }
   /* --- status da conversa com o Claude: lateral (deitado) / topo (em pé) --- */
-  #claudeBar { position: absolute; z-index: 45; right: 2vmin; top: 50%; width: 26vw; -webkit-transform: translateY(-50%); transform: translateY(-50%);
+  #claudeBar { position: absolute; z-index: 45; right: 2vmin; top: 30vmin; width: 26vw;
                padding: 2vmin 2.4vmin; display: none; pointer-events: auto; }
   #claudeBar.ver { display: block; }
   #claudeBar .cb-t { font-family: "Orbitron", sans-serif; font-size: 2.2vmin; letter-spacing: .12em; color: var(--suave); }
   #claudeBar .cb-e { font-family: "Orbitron", sans-serif; font-weight: 700; font-size: 3.6vmin; margin-top: 1vmin; }
   #claudeBar .cb-x { font-size: 3vmin; margin-top: .8vmin; line-height: 1.3; max-height: 12vmin; overflow: hidden; }
+  #claudeBar .cb-l { font-size: 2.5vmin; margin-top: 1vmin; border-top: 1px solid var(--borda); padding-top: .8vmin; }
+  #claudeBar .cb-l div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--suave); }
+  #claudeBar .cb-l b { font-weight: 600; } #claudeBar .cb-l .executando { color: var(--ciano); } #claudeBar .cb-l .esperando { color: var(--amarelo); } #claudeBar .cb-l .terminou { color: var(--verde); }
   #claudeBar .cb-q { font-size: 2.4vmin; color: var(--suave); margin-top: .8vmin; }
   #claudeBar.executando .cb-e { color: var(--ciano); } #claudeBar.executando { box-shadow: 0 0 0 var(--p) var(--ciano); }
   #claudeBar.executando .cb-e:after { content: ""; display: inline-block; width: 2.4vmin; height: 2.4vmin; margin-left: 1.4vmin; background: var(--ciano);
     -webkit-animation: cbGira 1s steps(4) infinite; animation: cbGira 1s steps(4) infinite; }
   @-webkit-keyframes cbGira { to { -webkit-transform: rotate(360deg); } } @keyframes cbGira { to { transform: rotate(360deg); } }
+  #claudeBar.arrastando { -webkit-transition: none; transition: none; }
   #claudeBar.esperando .cb-e { color: var(--amarelo); } #claudeBar.esperando { box-shadow: 0 0 0 var(--p) var(--amarelo); -webkit-animation: pisca 1s steps(2) infinite; animation: pisca 1s steps(2) infinite; }
   #claudeBar.terminou .cb-e { color: var(--verde); } #claudeBar.terminou { box-shadow: 0 0 0 var(--p) var(--verde); }
   @media (orientation: portrait) {
-    #claudeBar { top: 1.5vmin; right: 2vmin; left: 2vmin; width: auto; -webkit-transform: none; transform: none; padding: 1.4vmin 2.4vmin; }
+    #claudeBar { top: 1.5vmin; right: 2vmin; left: 2vmin; width: auto; padding: 1.4vmin 2.4vmin; }
     #claudeBar .cb-x { max-height: 7vmin; }
   }
   #auto3d { position: absolute; top: 15vmin; right: 3vmin; display: none; font-family: "Orbitron", sans-serif; font-size: 2.6vmin; padding: .6vmin 1.4vmin; color: #0d1020; background: var(--amarelo); pointer-events: none; }
@@ -117,7 +121,6 @@
   #rosto.bravo .olho.d:before { -webkit-transform: translateY(40%) rotate(-16deg); transform: translateY(40%) rotate(-16deg); }
   #rosto.bravo .olho { background: #ff9a8f; }
   #rosto.surpreso .olho { -webkit-transform: scale(1.12); transform: scale(1.12); border-radius: 50%; background: #fff3b0; }
-  body.com-alerta #olhos { top: 64%; }
 
   /* --- relógio, data e bateria na tela dos olhos --- */
   #rTopo { position: absolute; top: 5vmin; left: 0; right: 0; text-align: center; pointer-events: none; }
@@ -183,19 +186,35 @@
   /* ================= AVISOS ================= */
   #aviso { position: absolute; bottom: 17vmin; width: 100%; text-align: center; font-size: 4vmin; color: var(--suave); pointer-events: none; }
   #aviso.alerta { color: var(--rosa); }
-  #rodape { position: absolute; left: 8vmin; right: 8vmin; bottom: 18vmin; height: 10vmin; padding: 0 3.5vmin; line-height: 10vmin;
-            font-size: 3.7vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            opacity: 0; -webkit-transform: translateY(6vmin); transform: translateY(6vmin); pointer-events: none;
+  /* notificações em cartões no canto esquerdo (deitado) / no topo (em pé); arrastar para o lado ou para cima tira da tela */
+  #rodape { position: absolute; z-index: 44; left: 3vmin; top: 22vmin; width: 32vw; padding: 2.2vmin 2.8vmin; font-size: 3.4vmin; line-height: 1.3;
+            max-height: 30vmin; overflow: hidden; opacity: 0; -webkit-transform: translateX(-110%); transform: translateX(-110%); pointer-events: none;
             -webkit-transition: opacity .3s, -webkit-transform .3s; transition: opacity .3s, transform .3s; }
-  body.modo-olhos #rodape { bottom: 4vmin; }
   #rodape.ver { opacity: 1; -webkit-transform: none; transform: none; pointer-events: auto; }
-  #rodape b { font-family: "Orbitron", sans-serif; font-weight: 400; color: var(--ciano); margin-right: 2vmin; text-transform: uppercase; font-size: 3vmin; }
-  #alerta { position: absolute; left: 6vmin; right: 6vmin; top: 5vmin; padding: 3vmin 4vmin; display: none; background: #2a2210;
+  #rodape.arrastando, #alerta.arrastando { -webkit-transition: none; transition: none; }
+  #rodape .dica-arr, #alerta .dica-arr { display: block; font-size: 2.4vmin; color: var(--suave); margin-top: 1vmin; }
+  /* com cartões na tela, os olhos encolhem e vão para a direita; o relógio também abre espaço */
+  #olhosCx { position: absolute; top: 0; left: 0; right: 0; bottom: 0; -webkit-transition: -webkit-transform .4s ease; transition: transform .4s ease; pointer-events: none; }
+  body.com-notif #olhosCx { -webkit-transform: translateX(13vw) scale(.62); transform: translateX(13vw) scale(.62); }
+  body.com-notif #rTopo { left: 34vw; right: 28vw; -webkit-transition: left .4s, right .4s; transition: left .4s, right .4s; }
+  body.com-notif #rHora { font-size: 10vmin; }
+  body.com-alerta #rodape { top: auto; bottom: 4vmin; }
+  body.modo-olhos #claudeBar { top: 14vmin; }
+  @media (orientation: portrait) {
+    body.com-notif #olhosCx { -webkit-transform: translateY(14vh) scale(.7); transform: translateY(14vh) scale(.7); }
+    body.com-notif #rTopo { left: 0; top: 48vh; }
+    body.com-alerta #rodape { top: auto; bottom: 4vmin; }
+    body.modo-olhos #claudeBar { top: 1.5vmin; }
+  }
+  @media (orientation: portrait) { #rodape { left: 3vmin; right: 3vmin; width: auto; top: 24vmin; } }
+  #rodape b { display: block; font-family: "Orbitron", sans-serif; font-weight: 400; color: var(--ciano); text-transform: uppercase; font-size: 2.6vmin; margin-bottom: .8vmin; }
+  #alerta { position: absolute; z-index: 46; left: 3vmin; top: 3vmin; width: 34vw; padding: 3vmin 3.5vmin; display: none; background: #2a2210;
             box-shadow: 0 calc(-1 * var(--p)) 0 0 var(--amarelo), 0 var(--p) 0 0 var(--amarelo), calc(-1 * var(--p)) 0 0 0 var(--amarelo), var(--p) 0 0 0 var(--amarelo); }
   #alerta.ver { display: block; -webkit-animation: pisca 1s steps(2) 4; animation: pisca 1s steps(2) 4; }
   @-webkit-keyframes pisca { 50% { background: #3d3214; } } @keyframes pisca { 50% { background: #3d3214; } }
   #alerta .acat { font-family: "Orbitron", sans-serif; font-size: 3.2vmin; color: var(--amarelo); text-transform: uppercase; }
-  #alerta .atit { font-size: 5vmin; font-weight: 600; margin-top: 1.4vmin; line-height: 1.2; max-height: 12.5vmin; overflow: hidden; }
+  @media (orientation: portrait) { #alerta { right: 3vmin; width: auto; } }
+  #alerta .atit { font-size: 4.2vmin; font-weight: 600; margin-top: 1.4vmin; line-height: 1.2; max-height: 12.5vmin; overflow: hidden; }
   #afechar { position: absolute; top: 0; right: 0; width: 13vmin; height: 13vmin; display: -webkit-flex; display: flex;
              -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; color: var(--amarelo); }
   #afechar .pxi { width: 6vmin; height: 6vmin; }
@@ -314,7 +333,7 @@
 
 <iframe id="jogoFrame" title="jogo"></iframe>
 <div id="ouvindo" class="caixa">OUVINDO…</div>
-<div id="claudeBar" class="caixa"><div class="cb-t">CONVERSA COM O CLAUDE</div><div class="cb-e" id="cbE"></div><div class="cb-x" id="cbX"></div><div class="cb-q" id="cbQ"></div></div>
+<div id="claudeBar" class="caixa"><div class="cb-t" id="cbT">CONVERSA COM O CLAUDE</div><div class="cb-e" id="cbE"></div><div class="cb-x" id="cbX"></div><div class="cb-q" id="cbQ"></div><div class="cb-l" id="cbL"></div></div>
 <div id="codigoCx" class="caixa"><div class="titulo" style="color:var(--amarelo)">Parear pelo código</div>
   <div id="codigoMsg"></div><input id="codigoIn" type="tel" maxlength="6" placeholder="000000">
   <div><span class="acao caixa" id="codigoOk">confirmar</span><span class="acao caixa" id="codigoOutro">outro código</span><span class="acao caixa" id="codigoSair">fechar</span></div></div>
@@ -322,13 +341,13 @@
 <div id="rosto">
   <div id="rTopo"><div id="rHora">--:--</div><div id="rData"></div><div id="rClima"></div></div>
   <div class="pilhaCx" id="rPilha"></div>
-  <div id="olhos" class="e0"><div class="olho e"><i class="pu"></i></div><div class="olho d"><i class="pu"></i></div></div>
+  <div id="olhosCx"><div id="olhos" class="e0"><div class="olho e"><i class="pu"></i></div><div class="olho d"><i class="pu"></i></div></div></div>
   <div id="rNome"></div>
 </div>
 
 <div id="aviso"></div>
 <div id="rodape" class="caixa"></div>
-<div id="alerta"><div class="acat"></div><div class="atit"></div><div class="adica">toque para abrir no PC · fecha sozinho em <span id="aseg">20</span>s</div><div id="afechar"></div></div>
+<div id="alerta"><div class="acat"></div><div class="atit"></div><div class="adica">toque: abrir no PC · arraste: dispensar · some em <span id="aseg">20</span>s</div><div id="afechar"></div></div>
 
 <div id="painel">
   <div id="topo">
@@ -971,15 +990,55 @@
     var n = fila.shift();
     if (painel.className) msg.textContent = n.catNome + " · " + n.titulo;
     rodape.innerHTML = ""; rodape.appendChild(el("b", null, n.catNome)); rodape.appendChild(document.createTextNode(n.titulo));
-    rodape.k = n.k; rodape.className = "caixa ver"; vibrar(30);
+    rodape.appendChild(el("span", "dica-arr", "toque: abrir no PC · arraste: dispensar"));
+    rodape.k = n.k; rodape.className = "caixa ver"; notifVisivel(); vibrar(30);
     if (modoTela !== "olhos") falar("Notícia nova!");
-    setTimeout(function () { rodape.className = "caixa"; setTimeout(function () { rodando = false; proximo(); }, 400); }, 14000);
+    clearTimeout(timerRodape); timerRodape = setTimeout(tirarRodape, 9000);
   }
+  var timerRodape = null;
+  function tirarRodape() {
+    clearTimeout(timerRodape);
+    if (rodape.className.indexOf("ver") < 0) return;
+    rodape.className = "caixa"; rodape.style.webkitTransform = rodape.style.transform = ""; notifVisivel();
+    setTimeout(function () { rodando = false; proximo(); }, 350);
+  }
+  function notifVisivel() {
+    var algum = rodape.className.indexOf("ver") >= 0 || alerta.className.indexOf("ver") >= 0 || $("claudeBar").className.indexOf("ver") >= 0;
+    document.body.className = document.body.className.replace(/ ?com-notif/g, "") + (algum ? " com-notif" : "");
+  }
+  // arrastar para o lado ou para cima tira o cartão da tela (igual às notificações do Android)
+  function arrastavel(cartao, tirar) {
+    var ini = null;
+    cartao.addEventListener("touchstart", function (e) { var t = e.touches[0]; ini = { x: t.clientX, y: t.clientY, mexeu: false }; }, false);
+    cartao.addEventListener("touchmove", function (e) {
+      if (!ini) return;
+      var t = e.touches[0], dx = t.clientX - ini.x, dy = t.clientY - ini.y;
+      if (!ini.mexeu && Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      ini.mexeu = true; e.preventDefault(); cartao.className += cartao.className.indexOf("arrastando") < 0 ? " arrastando" : "";
+      var up = dy < 0 && Math.abs(dy) > Math.abs(dx);
+      cartao.style.webkitTransform = cartao.style.transform = up ? "translateY(" + dy + "px)" : "translateX(" + dx + "px)";
+      cartao.style.opacity = Math.max(0.15, 1 - Math.max(Math.abs(dx), up ? -dy : 0) / 260);
+    }, false);
+    cartao.addEventListener("touchend", function (e) {
+      if (!ini) return;
+      var t = e.changedTouches[0], dx = t.clientX - ini.x, dy = t.clientY - ini.y, mexeu = ini.mexeu; ini = null;
+      cartao.className = cartao.className.replace(/ ?arrastando/g, "");
+      cartao.style.opacity = "";
+      if (mexeu) {
+        semCliqueCartao = Date.now() + 500;
+        if (Math.abs(dx) > 70 || dy < -50) { vibrar(15); tirar(); }
+        cartao.style.webkitTransform = cartao.style.transform = "";
+      }
+    }, false);
+  }
+  var semCliqueCartao = 0;
+  arrastavel(rodape, tirarRodape);
+  arrastavel($("claudeBar"), function () { esconderConversa(); });
   function mostrarUrgente(n) {
     urgente = n;
     alerta.firstChild.textContent = n.catNome + (n.fonte ? " · " + n.fonte : "");
     alerta.childNodes[1].textContent = n.titulo;
-    alerta.className = "ver";
+    alerta.className = "ver"; notifVisivel();
     document.body.className += " com-alerta";
     if (painel.className) msg.textContent = n.catNome + " · " + n.titulo;
     Mundo.surpreso(); if (m3d) Mundo3D.surpreso(); humorPassageiro("surpreso", 3000); brilho(-1);
@@ -988,15 +1047,16 @@
     var seg = 20; $("aseg").textContent = seg;
     contagem = setInterval(function () { seg--; $("aseg").textContent = Math.max(0, seg); if (seg <= 0) fecharAlerta(); }, 1000);
   }
-  function fecharAlerta() { setTimeout(ajustarBrilho, 50); clearInterval(contagem); alerta.className = ""; document.body.className = document.body.className.replace(/ ?com-alerta/g, ""); urgente = null; clearTimeout(timerUrg); }
+  function fecharAlerta() { setTimeout(ajustarBrilho, 50); clearInterval(contagem); alerta.className = ""; document.body.className = document.body.className.replace(/ ?com-alerta/g, ""); urgente = null; clearTimeout(timerUrg); alerta.style.webkitTransform = alerta.style.transform = ""; notifVisivel(); }
   function abrirNoPC(k) {
     if (!k) return; vibrar(30);
     pedir("POST", "/api/abrir", { k: k }, function (er, r) { aviso.textContent = (r && r.msg) || "Falhou."; setTimeout(function () { aviso.textContent = ""; }, 4000); });
   }
-  rodape.addEventListener("click", function (ev) { ev.stopPropagation(); abrirNoPC(rodape.k); rodape.className = "caixa"; });
+  rodape.addEventListener("click", function (ev) { ev.stopPropagation(); if (Date.now() < semCliqueCartao) return; abrirNoPC(rodape.k); tirarRodape(); });
   comIcone($("afechar"), "close");
   $("afechar").addEventListener("click", function (ev) { ev.stopPropagation(); vibrar(20); fecharAlerta(); });
-  alerta.addEventListener("click", function (ev) { ev.stopPropagation(); if (urgente) abrirNoPC(urgente.k); fecharAlerta(); });
+  alerta.addEventListener("click", function (ev) { ev.stopPropagation(); if (Date.now() < semCliqueCartao) return; if (urgente) abrirNoPC(urgente.k); fecharAlerta(); });
+  arrastavel(alerta, function () { fecharAlerta(); });
 
   // ---------------------------------------------------------------- voz (Fase 2): ouvindo / anotado / lembrete tocando
   var seqVoz = -1;
@@ -1069,12 +1129,22 @@
         var bar = $("claudeBar");
         bar.className = "caixa " + c.estado + (!convOculto && !velho ? " ver" : "");
         $("cbE").textContent = NOME_EST[c.estado] || c.estado.toUpperCase();
-        $("cbX").textContent = c.titulo; $("cbQ").textContent = tempoDesde(c.quando) + " · toque para esconder";
+        $("cbT").textContent = "CLAUDE · " + (c.nome || "conversa").toUpperCase();
+        $("cbX").textContent = c.titulo; $("cbQ").textContent = tempoDesde(c.quando) + " · toque ou arraste para esconder";
+        var L = $("cbL"); L.innerHTML = "";
+        var outras = (c.sessoes || []).filter(function (x) { return x.nome !== c.nome && (Date.now() / 1000 - x.quando) < 6 * 3600; });
+        for (var i = 0; i < outras.length && i < 3; i++) {
+          var d = el("div"); var bb = el("b", outras[i].estado, (NOME_EST[outras[i].estado] || outras[i].estado).replace(" ✓", "") + " ");
+          d.appendChild(bb); d.appendChild(document.createTextNode(outras[i].nome + " · " + outras[i].titulo)); L.appendChild(d);
+        }
+        L.style.display = outras.length ? "block" : "none";
+        notifVisivel();
       }
       setTimeout(lerConversa, 5000);
     });
   }
-  $("claudeBar").addEventListener("click", function (ev) { ev.stopPropagation(); convOculto = true; $("claudeBar").className = "caixa"; });
+  function esconderConversa() { convOculto = true; $("claudeBar").className = "caixa"; $("claudeBar").style.webkitTransform = $("claudeBar").style.transform = ""; notifVisivel(); }
+  $("claudeBar").addEventListener("click", function (ev) { ev.stopPropagation(); if (Date.now() < semCliqueCartao) return; esconderConversa(); });
   lerConversa();
 
   // ---- bateria do celular (pilha no canto)

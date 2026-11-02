@@ -661,12 +661,13 @@ def main():
     threading.Thread(target=rodar_bom_dia, daemon=True).start()
     global CONVERSA
     def mudou(e):   # terminou/esperando: o celular fala e o PC avisa
+        nome = e.get("nome", "conversa").replace("-", " ")
         if e["estado"] == "terminou":
-            OUVIDO.falar("Felipe, terminei: " + e["titulo"])
-            AGENDA_notificar("Claude terminou", e["titulo"])
+            OUVIDO.falar("Felipe, a conversa %s terminou: %s" % (nome, e["titulo"]))
+            AGENDA_notificar("Claude terminou · " + nome, e["titulo"])
         elif e["estado"] == "esperando":
-            OUVIDO.falar("Felipe, estou esperando sua resposta.")
-            AGENDA_notificar("Claude espera você", e["titulo"])
+            OUVIDO.falar("Felipe, a conversa %s está esperando sua resposta." % nome)
+            AGENDA_notificar("Claude espera você · " + nome, e["titulo"])
     CONVERSA = Conversa(carregar_config, log=log, ao_mudar=mudou)
     threading.Thread(target=CONVERSA.rodar, daemon=True).start()
     log("[chrome] perfis encontrados: %s" % ", ".join("%s (%s)" % (p["nome"], p["dir"]) for p in chrome.listar_perfis()))
