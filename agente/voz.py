@@ -125,7 +125,8 @@ class Ouvido:
                     pass
             self.estado["celular"] = True
             self.log("[voz] celular conectado (%s)" % ("cabo" if local else "wi-fi"))
-            c.settimeout(30)
+            c.settimeout(None)   # o celular fica calado no silêncio (economia); quedas são detectadas pelo keepalive
+            c.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
             self.escutar(c)
         except Exception as e:
             self.log("[voz] conexão caiu: %s" % e)
@@ -157,8 +158,14 @@ class Ouvido:
         """Ouve frase por frase (o Vosk corta nas pausas). Se a frase parece começar com "Cadu"
         (o Vosk costuma escrever "casou", "cadê", "dor"…), o Whisper confere e transcreve direito.
         Dois jeitos de falar:  "Cadu, me lembra…" (tudo junto)  ou  "Cadu" … (apito) … "me lembra…"."""
-        import numpy as np
-        from vosk import KaldiRecognizer
+        try:
+            import numpy as np
+            from vosk import KaldiRecognizer
+        except Exception:
+            # sem os programas de voz: só recebe e descarta o áudio (não derruba a conexão do celular)
+            while c.recv(65536):
+                pass
+            return
         rec = None
         frase = []                       # áudio da frase atual (desde a última pausa)
         anterior = deque(maxlen=8)       # ~0,5 s antes da frase, para não cortar o começo

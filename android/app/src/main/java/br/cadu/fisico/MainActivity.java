@@ -52,6 +52,8 @@ public class MainActivity extends Activity {
     private volatile String ipBeacon = null;
     private volatile String urlAtual = null;
     private volatile boolean carregou = true;
+    private volatile boolean vivo = true;
+    private volatile DatagramSocket sockBeacon;
     private volatile long desde = 0;
     private WifiManager.MulticastLock trava;
 
@@ -113,6 +115,13 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        vivo = false;  // as buscas desta tela param (se a tela for recriada, a nova assume)
+        try { if (sockBeacon != null) sockBeacon.close(); } catch (Exception ignored) { }
+        super.onDestroy();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         brilhoNormal();  // ao voltar para o app (ex.: depois de mexer na barra de brilho), nunca fica preso no escuro
@@ -131,7 +140,7 @@ public class MainActivity extends Activity {
     private void procurarPC() {
         Thread t = new Thread(new Runnable() {
             public void run() {
-                while (true) {
+                while (vivo) {
                     if (!conectado) {
                         final String url = acharAgente();
                         if (url != null) {
@@ -166,6 +175,12 @@ public class MainActivity extends Activity {
         for (String ip : candidatos) {
             if (ip != null && ping("http://" + ip + ":" + PORTA + "/api/ping")) {
                 prefs.edit().putString("ip", ip).apply();
+                if (codigoHttp("http://" + ip + ":" + PORTA + "/api/prefs?t=" + token) == 403) {
+                    // o PC trocou o token: esquece o pareamento para a tela offline mostrar "Parear"
+                    prefs.edit().remove("token").apply();
+                    diag = "pareamento vencido — toque em Parear";
+                    return null;
+                }
                 return "http://" + ip + ":" + PORTA + "/?t=" + token;
             }
         }
@@ -173,6 +188,19 @@ public class MainActivity extends Activity {
     }
 
     static volatile String diag = "";
+
+    private static int codigoHttp(String endereco) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(endereco).openConnection(java.net.Proxy.NO_PROXY);
+            c.setConnectTimeout(3000); c.setReadTimeout(5000);
+            return c.getResponseCode();
+        } catch (Exception e) {
+            return -1;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
 
     private static boolean ping(String endereco) {
         HttpURLConnection c = null;
@@ -209,13 +237,16 @@ public class MainActivity extends Activity {
         }
         Thread t = new Thread(new Runnable() {
             public void run() {
-                while (true) {
+                while (vivo) {
                     DatagramSocket sock = null;
                     try {
-                        sock = new DatagramSocket(PORTA_BEACON);
+                        sock = new DatagramSocket(null);
+                        sock.setReuseAddress(true);
+                        sock.bind(new java.net.InetSocketAddress(PORTA_BEACON));
+                        sockBeacon = sock;
                         sock.setBroadcast(true);
                         byte[] buf = new byte[64];
-                        while (true) {
+                        while (vivo) {
                             DatagramPacket p = new DatagramPacket(buf, buf.length);
                             sock.receive(p);
                             String msg = new String(p.getData(), 0, p.getLength(), "UTF-8");
@@ -338,7 +369,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.9.4-eco"; }
+        public String versao() { return "0.9.5-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface

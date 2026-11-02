@@ -170,7 +170,13 @@ class Agenda:
     def _salvar(self):
         tmp = ARQ.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.notas, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(ARQ)
+        for i in range(8):   # no Windows o arquivo pode estar aberto por um post-it/antivírus por um instante
+            try:
+                tmp.replace(ARQ)
+                return
+            except PermissionError:
+                time.sleep(0.15)
+        self.log("[agenda] não consegui salvar notas.json (arquivo ocupado)")
 
     def _evento(self, **kv):
         self.seq_ev += 1
@@ -277,8 +283,19 @@ class Agenda:
 
     # ------------------------------------------------ relógio dos lembretes
     def rodar(self):
-        self.reabrir_postits()
+        try:
+            self.reabrir_postits()
+        except Exception as e:
+            self.log("[agenda] erro ao reabrir post-its: %s" % e)
         while True:
+            try:
+                self._verificar()
+            except Exception as e:   # o relógio dos lembretes nunca pode morrer
+                self.log("[agenda] erro no relógio dos lembretes: %s" % e)
+            time.sleep(10)
+
+    def _verificar(self):
+        if True:
             agora = time.time()
             vencidas = []
             with self.trava:
@@ -299,4 +316,3 @@ class Agenda:
                 self.piscar(n["id"])
                 if self.falar_no_celular:
                     self.falar_no_celular("Felipe, lembrete: " + n["texto"])
-            time.sleep(10)

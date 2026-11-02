@@ -23,6 +23,7 @@ public class Gravador {
 
     static final int TAXA = 16000, MAX_S = 30;
     private static volatile boolean gravando = false, parar = false;
+    private static final java.util.concurrent.atomic.AtomicBoolean enviando = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     static File pasta(Context c) {
         File d = new File(c.getFilesDir(), "pendentes");
@@ -89,6 +90,11 @@ public class Gravador {
 
     /** Manda as gravações guardadas para o PC (chamado quando o ouvido conecta). */
     static void enviarPendentes(Context c, String host) {
+        if (!enviando.compareAndSet(false, true)) return;   // um envio por vez (evita post-it duplicado)
+        try { enviarPendentesAgora(c, host); } finally { enviando.set(false); }
+    }
+
+    private static void enviarPendentesAgora(Context c, String host) {
         File[] l = pasta(c).listFiles();
         if (l == null) return;
         String token = c.getSharedPreferences("cadu", Context.MODE_PRIVATE).getString("token", "");
@@ -102,7 +108,7 @@ public class Gravador {
                 while (lidos < dados.length) { int n = in.read(dados, lidos, dados.length - lidos); if (n < 0) break; lidos += n; }
                 in.close();
                 con = (HttpURLConnection) new URL("http://" + host + ":" + MainActivity.PORTA + "/api/voz/audio?ts=" + ts).openConnection();
-                con.setConnectTimeout(4000); con.setReadTimeout(15000);
+                con.setConnectTimeout(4000); con.setReadTimeout(90000);  // o PC transcreve antes de responder
                 con.setRequestMethod("POST"); con.setDoOutput(true);
                 con.setRequestProperty("Content-Type", "application/octet-stream");
                 if (token != null) con.setRequestProperty("X-Cadu-Token", token);

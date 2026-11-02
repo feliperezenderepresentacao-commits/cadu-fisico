@@ -394,8 +394,8 @@
     carregarScript("/static/three.min.js", function (erro) {
       if (erro) return cb(true);
       carregarScript("/static/mundo3d.js", function (e2) {
-        if (e2 || !Mundo3D.suportado()) return cb(true);
-        Mundo3D.iniciar($("cena3d"), {
+        if (e2 || !window.THREE || !window.Mundo3D || !Mundo3D.suportado()) return cb(true);
+        try { Mundo3D.iniciar($("cena3d"), {
           aoAgir: agirPet, aoQuadro: seguirPet, falar: falar,
           salvar: function (j) { pedir("POST", "/api/jogo", { jogo: j }); },
           aoContador: function (t) { $("nmC").textContent = t; },
@@ -419,7 +419,7 @@
             lista.push({ id: "menu" });
             montarFerramentas(lista);
           }
-        });
+        }); } catch (eIni) { return cb(true); }   // WebView antigo demais para o 3D: usa o mundo pixel
         m3d = true;
         Mundo3D.config({ tour: prefs.tour !== false, som: prefs.som !== false, estilo: prefs.estilo || "bolinha" });
         pedir("GET", "/api/jogo", null, function (er, j) { if (!er && j) Mundo3D.jogo(j); });
@@ -446,7 +446,7 @@
   }
   window.addEventListener("message", function (e) {
     var d = e.data || {}; if (!d.cadu || !jogoAberto) return;
-    if (d.cadu === "toque") { jogoToque = Date.now(); jogoTocado = true; }
+    if (d.cadu === "toque") { jogoToque = ultimaAtividade = Date.now(); jogoTocado = true; }
     else if (d.cadu === "sair") { vibrar(20); fecharJogo(); }
     else if (d.cadu === "recompensa") { agirPet("recompensa"); if (m3d) Mundo3D.moedas(d.moedas || 1); }
   });
@@ -857,7 +857,7 @@
   pedir("GET", "/api/prefs", null, function (er, p) { if (!er && p) prefs = p; aplicarModo(!er && p ? p.tela : "mundo3d"); });
   pedir("GET", "/api/botoes", null, function (er, l) { if (!er && l) montarBotoes(l); });
   carregarPet(); setInterval(carregarPet, 30000);
-  buscarVoz();
+  buscarVoz(); brilho(-1);   // ao abrir a tela, o brilho volta ao normal
   relogio(); status(); piscar(); olhar(); parearSeNoCabo(); buscarAvisos();
 })();
 </script>

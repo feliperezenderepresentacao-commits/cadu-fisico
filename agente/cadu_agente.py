@@ -75,7 +75,7 @@ def todos_botoes(cfg):
 
 
 def carregar_config():
-    with open(CONFIG, encoding="utf-8") as f:
+    with open(CONFIG, encoding="utf-8-sig") as f:   # aceita config salvo pelo Bloco de Notas (com BOM)
         return json.load(f)
 
 
@@ -230,6 +230,8 @@ def executar(botao, cfg):
     if tipo == "url":
         webbrowser.open(botao["url"])
         return True, botao["rotulo"] + ": aberto no navegador."
+    if tipo == "app" and botao.get("app"):   # app do Windows pelo nome (ex.: Claude), com site de reserva
+        return abrir_app(botao["app"], botao.get("url_reserva"), botao["rotulo"])
     if tipo == "app":
         for c in botao.get("caminhos", []):
             c = os.path.expandvars(c)
@@ -240,8 +242,6 @@ def executar(botao, cfg):
             os.startfile(botao["protocolo"])  # ex.: claude:// abre o app instalado
             return True, botao["rotulo"] + ": aberto."
         return False, botao["rotulo"] + ": app não encontrado neste PC."
-    if tipo == "app":
-        return abrir_app(botao["app"], botao.get("url_reserva"), botao["rotulo"])
     if tipo == "chrome":
         return chrome.abrir(botao["id"].split(":", 1)[1], cfg)
     if tipo == "status_vps":
@@ -427,8 +427,10 @@ class Handler(BaseHTTPRequestHandler):
                     ts = float((urllib.parse.parse_qs(u.query).get("ts") or ["0"])[0]) / 1000.0
                 except ValueError:
                     ts = 0
-                threading.Thread(target=OUVIDO.gravacao_offline, args=(pcm, ts), daemon=True).start()
-                return self._json({"ok": True})
+                if OUVIDO.whisper is None:   # ainda não dá para transcrever: o celular guarda e manda depois
+                    return self._json({"ok": False, "msg": "voz não está pronta"}, 503)
+                ok = OUVIDO.gravacao_offline(pcm, ts)  # só confirma depois de virar post-it
+                return self._json({"ok": ok}, 200 if ok else 500)
             pedido = self._corpo()
             if u.path == "/api/acao":
                 cfg = carregar_config()
