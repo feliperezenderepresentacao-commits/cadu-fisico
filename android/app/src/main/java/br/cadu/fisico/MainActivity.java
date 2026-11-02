@@ -293,7 +293,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String versao() { return "0.8-offline"; }
+        public String versao() { return "0.9-eco"; }
 
         /** Chamado pela interface quando está no cabo: guarda token + IP para o Wi-Fi. */
         @JavascriptInterface
@@ -426,6 +426,16 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public int pendentes() { return Gravador.pendentes(MainActivity.this); }
+
+        /** Brilho da tela só deste app (0.01–1); valor negativo = volta ao brilho do sistema. Usado no modo economia (olhos). */
+        @JavascriptInterface
+        public void brilho(final float v) {
+            web.post(new Runnable() { public void run() {
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.screenBrightness = v < 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : Math.max(0.01f, Math.min(1f, v));
+                getWindow().setAttributes(lp);
+            } });
+        }
 
         /** Fase 2: liga/desliga o ouvido (microfone repassado ao PC). */
         @JavascriptInterface

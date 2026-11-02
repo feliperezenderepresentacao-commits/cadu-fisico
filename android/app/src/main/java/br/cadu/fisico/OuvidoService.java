@@ -40,6 +40,8 @@ public class OuvidoService extends Service {
 
     static final int PORTA_VOZ = 8767;
     static final int TAXA = 16000;
+    static final double LIMIAR = 450;          // nível que conta como "tem som"
+    static final int PRE_BLOCOS = 16, POS_BLOCOS = 40;  // ~1 s antes, ~2,5 s depois
     static volatile boolean conectado = false;
     static volatile String ultimaFala = "";
 
@@ -89,7 +91,7 @@ public class OuvidoService extends Service {
                 trava = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "cadu:ouvido");
                 trava.acquire();
                 WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                if (wm != null) { travaWifi = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cadu:ouvido"); travaWifi.acquire(); }
+                if (wm != null) { travaWifi = wm.createWifiLock(WifiManager.WIFI_MODE_FULL, "cadu:ouvido"); travaWifi.acquire(); }
             } catch (Exception ignored) { }
             Thread t = new Thread(new Runnable() { public void run() { laco(); } });
             t.setDaemon(true);
@@ -152,9 +154,25 @@ public class OuvidoService extends Service {
                 leitor.start();
                 OutputStream out = s.getOutputStream();
                 byte[] buf = new byte[2048];  // 64 ms de áudio
+                java.util.ArrayDeque<byte[]> antes = new java.util.ArrayDeque<byte[]>();
+                int silencioBlocos = POS_BLOCOS + 1;
                 while (rodando && !s.isClosed()) {
                     int n = rec.read(buf, 0, buf.length);
-                    if (n > 0) out.write(buf, 0, n);
+                    if (n > 0) {
+                        // economia: só manda áudio quando há som (e 2,5 s depois); guarda ~1 s antes para não cortar o começo
+                        long soma = 0;
+                        for (int i = 0; i + 1 < n; i += 2) { int a = (short) ((buf[i] & 0xff) | (buf[i + 1] << 8)); soma += (long) a * a; }
+                        double rms = Math.sqrt(soma / Math.max(1.0, n / 2.0));
+                        if (rms > LIMIAR) {
+                            if (silencioBlocos > POS_BLOCOS) { for (byte[] b : antes) out.write(b); }
+                            antes.clear();
+                            silencioBlocos = 0;
+                        } else {
+                            silencioBlocos++;
+                        }
+                        if (silencioBlocos <= POS_BLOCOS) out.write(buf, 0, n);
+                        else { antes.addLast(java.util.Arrays.copyOf(buf, n)); if (antes.size() > PRE_BLOCOS) antes.removeFirst(); }
+                    }
                     else if (n < 0) break;
                 }
             } catch (Exception e) {

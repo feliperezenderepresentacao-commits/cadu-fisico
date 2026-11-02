@@ -35,7 +35,7 @@
     var erro = esq - ant.x, tol = (game.getVariable("BLOCK_WIDTH") || W * 0.25) * 0.07;
     if (Math.abs(erro) < tol) soltar();
   }
-  Jogo.iniciar({ id: "torre", nome: "Torre", botMs: 30, bot: bot,
+  Jogo.iniciar({ recarregarAoGirar: true, id: "torre", nome: "Torre", botMs: 30, bot: bot,
     controles: [{ rotulo: "soltar", larga: true, fn: soltar }],
     aoAuto: function () { Jogo.falar(Jogo.sortear(["Vou até o céu!", "Mira… agora!", "Construindo!"])); } });
   Jogo.falar("Toque para soltar o bloco!");

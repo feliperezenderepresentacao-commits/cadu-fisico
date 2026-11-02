@@ -456,6 +456,8 @@ class Handler(BaseHTTPRequestHandler):
                     prefs["tela"] = pedido["tela"]
                 if pedido.get("estilo") in ("bolinha", "ursinho", "mochi"):
                     prefs["estilo"] = pedido["estilo"]
+                if isinstance(pedido.get("eco"), int) and 0 <= pedido["eco"] <= 600:
+                    prefs["eco"] = pedido["eco"]
                 for k in ("tour", "som"):
                     if isinstance(pedido.get(k), bool):
                         prefs[k] = pedido[k]

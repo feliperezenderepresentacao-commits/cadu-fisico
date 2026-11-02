@@ -61,7 +61,7 @@
   area.addEventListener("touchstart", function (e) { var t = e.touches[0]; ini = [t.clientX, t.clientY]; if (PACMAN.estado().state === 5) PACMAN.novo(); }, false);
   area.addEventListener("touchend", function (e) { if (!ini) return; var t = e.changedTouches[0], dx = t.clientX - ini[0], dy = t.clientY - ini[1]; ini = null;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return; PACMAN.dir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? K.dir : K.esq) : (dy > 0 ? K.baixo : K.cima)); }, false);
-  Jogo.iniciar({ id: "pacman", nome: "Come-come", botMs: 90, bot: bot,
+  Jogo.iniciar({ recarregarAoGirar: true, id: "pacman", nome: "Come-come", botMs: 90, bot: bot,
     controles: [{ rotulo: "▲", fn: function () { PACMAN.dir(K.cima); } }, { rotulo: "▼", fn: function () { PACMAN.dir(K.baixo); } },
                 { rotulo: "◀", fn: function () { PACMAN.dir(K.esq); } }, { rotulo: "▶", fn: function () { PACMAN.dir(K.dir); } },
                 { rotulo: "novo jogo", larga: true, fn: function () { PACMAN.novo(); } }],

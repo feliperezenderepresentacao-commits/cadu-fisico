@@ -1052,7 +1052,7 @@ var Mundo3D = (function () {
     requestAnimationFrame(quadro);
     if (!ultimo) ultimo = t;
     var dt = Math.min(0.1, (t - ultimo) / 1000); ultimo = t; acum += dt;
-    if (acum < 1 / 31) return;
+    if (acum < (autoEstava ? 1 / 20 : 1 / 31)) return;   // no AUTO roda a 20 fps (economiza bateria)
     dt = Math.min(0.1, acum); acum = 0; tempo += dt;
     var auto = autoAtivo();
     if (auto !== autoEstava) { autoEstava = auto; if (opc.aoAuto) opc.aoAuto(auto); }

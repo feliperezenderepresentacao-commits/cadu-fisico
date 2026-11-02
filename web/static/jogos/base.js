@@ -60,6 +60,12 @@ var Jogo = (function () {
       opc = o; montar();
       ["touchstart", "mousedown", "keydown"].forEach(function (ev) { document.addEventListener(ev, function (e) { if (!e.isTrusted && e.isTrusted !== undefined) return; toque(); }, true); });
       timerBot = setInterval(laco, o.botMs || 120);
+      if (o.recarregarAoGirar) {  // jogos que só medem a tela ao abrir: recomeçam quando o celular gira
+        var deitado = window.innerWidth > window.innerHeight;
+        window.addEventListener("resize", function () {
+          if ((window.innerWidth > window.innerHeight) !== deitado) location.reload();
+        });
+      }
       window.addEventListener("message", function (e) { if (e.data && e.data.cadu === "auto") { ultimoToque = 0; } });
     },
     auto: function () { return auto; },

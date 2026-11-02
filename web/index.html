@@ -85,6 +85,7 @@
   body.modo-olhos #rosto { display: block; }
   body.modo-olhos #mundoTela { display: none; }
   body.modo-olhos.modo-3d #mundoTela { display: none; }
+  body.eco .olho { opacity: .5; }
   #olhos { position: absolute; left: 50%; top: 46%; width: 112vmin; height: 50vmin; margin-left: -56vmin; margin-top: -25vmin;
            -webkit-transition: -webkit-transform .5s ease; transition: transform .5s ease; }
   .olho { position: absolute; top: 0; width: 38vmin; height: 50vmin; background: var(--olho); border-radius: 15vmin; overflow: hidden;
@@ -193,6 +194,7 @@
 
   /* ================= VERTICAL ================= */
   @media (orientation: portrait) {
+    #nomeMundo { top: 30vmin; } #auto3d { top: 30vmin; } #ouvindo { top: 36vmin; }
     #olhos { width: 84vmin; height: 40vmin; margin-left: -42vmin; margin-top: -20vmin; }
     .olho { width: 30vmin; height: 40vmin; border-radius: 12vmin; } .olho.e { left: 6vmin; } .olho.d { right: 6vmin; }
     .btn { width: 33.333%; height: 25%; } .item { width: 100%; }
@@ -467,7 +469,12 @@
     $("olhos").style.webkitTransform = t; $("olhos").style.transform = t;
     setTimeout(olhar, 1500 + Math.random() * 3000);
   }
-  rosto.addEventListener("click", function () { humorPassageiro("feliz", 500); abrirPainel(); });
+  var timerRosto = null, semCliqueAte = 0;
+  rosto.addEventListener("click", function () {   // 1 toque abre o menu; 2 toques (duplo) saem do modo economia
+    clearTimeout(timerRosto);
+    if (Date.now() < semCliqueAte) return;
+    timerRosto = setTimeout(function () { humorPassageiro("feliz", 500); abrirPainel(); }, 330);
+  });
 
   function aplicarModo(m) {
     modoTela = (m === "olhos" || m === "mundo") ? m : "mundo3d";
@@ -485,6 +492,42 @@
     Mundo.ativo(modoTela === "mundo" && !painel.className);
     if (modoTela === "mundo") montarFerramentas([{ id: "comer" }, { id: "brincar" }, { id: "luz" }, { id: "menu" }]);
   }
+  // ---------------------------------------------------------------- ECONOMIA DE BATERIA
+  // Duplo toque: jogos ⇄ olhos (tela escura + brilho baixo). Sozinho depois de X min sem toque.
+  var ecoDe = null, ultimaAtividade = Date.now(), toqueAnt = null;
+  function brilho(v) { ponte(function () { Cadu.brilho(v); }); }
+  function ajustarBrilho() { brilho(document.body.className.indexOf(" eco") >= 0 && !urgente ? 0.03 : -1); }
+  function eco(sim) {
+    if (sim) {
+      if (modoTela === "olhos" && document.body.className.indexOf(" eco") >= 0) return;
+      if (jogoAberto) fecharJogo();
+      if (painel.className) fecharPainel();
+      ecoDe = modoTela === "olhos" ? null : modoTela;
+      aplicarModo("olhos"); document.body.className += " eco"; ajustarBrilho();
+    } else {
+      var volta = ecoDe || (prefs.tela && prefs.tela !== "olhos" ? prefs.tela : "mundo3d");
+      ecoDe = null; aplicarModo(volta); ajustarBrilho(); ultimaAtividade = Date.now();
+      falar("Voltei!");
+    }
+  }
+  var ultimoDuplo = 0;
+  function duploToque() { if (Date.now() - ultimoDuplo < 700) return; ultimoDuplo = Date.now(); clearTimeout(timerRosto); semCliqueAte = Date.now() + 600; vibrar(25); eco(modoTela !== "olhos"); }
+  document.addEventListener("touchend", function (e) {
+    ultimaAtividade = Date.now();
+    if (painel.className) return;
+    var t = e.changedTouches[0], alvo = e.target;
+    if (alvo.closest && alvo.closest("#ferramentas, #alerta, #rodape, #codigoCx, #hud")) return;
+    var agora = Date.now();
+    if (toqueAnt && agora - toqueAnt.t < 350 && Math.abs(t.clientX - toqueAnt.x) < 60 && Math.abs(t.clientY - toqueAnt.y) < 60) { toqueAnt = null; duploToque(); return; }
+    toqueAnt = { t: agora, x: t.clientX, y: t.clientY };
+  }, true);
+  document.addEventListener("dblclick", function (e) { if (!painel.className) duploToque(); });
+  document.addEventListener("mousedown", function () { ultimaAtividade = Date.now(); }, true);
+  setInterval(function () {
+    var min = prefs.eco === undefined ? 15 : prefs.eco;
+    if (min > 0 && modoTela !== "olhos" && !painel.className && Date.now() - ultimaAtividade > min * 60000) eco(true);
+  }, 20000);
+
   function ligarMundos(sim) {
     if (jogoAberto) sim = false;
     Mundo.ativo(sim && modoTela === "mundo");
@@ -614,6 +657,11 @@
         { texto: "bolinha", icone: "sun", marcada: est === "bolinha", fn: function () { mudarPref("estilo", "bolinha"); } },
         { texto: "ursinho", icone: "heart", marcada: est === "ursinho", fn: function () { mudarPref("estilo", "ursinho"); } },
         { texto: "gatinho", icone: "star", marcada: est === "mochi", fn: function () { mudarPref("estilo", "mochi"); } }]);
+      var em = prefs.eco === undefined ? 15 : prefs.eco;
+      itemAjuste(L, "Economia de bateria", "duplo toque: jogos ⇄ olhos · sozinho " + (em ? "após " + (em >= 60 ? em / 60 + " h" : em + " min") + " sem toque" : "desligado"), [
+        { texto: "15 min", icone: "moon", marcada: em === 15, fn: function () { mudarPref("eco", 15); } },
+        { texto: "1 h", icone: "moon", marcada: em === 60, fn: function () { mudarPref("eco", 60); } },
+        { texto: "nunca", icone: "sun", marcada: em === 0, fn: function () { mudarPref("eco", 0); } }]);
       itemAjuste(L, "Passeio automático", prefs.tour !== false ? "ligado: sozinho, ele visita os 5 mundos" : "desligado: fica no mundo atual", [
         { texto: "ligar", icone: "map", marcada: prefs.tour !== false, fn: function () { mudarPref("tour", true); } },
         { texto: "desligar", icone: "close", marcada: prefs.tour === false, fn: function () { mudarPref("tour", false); } }]);
@@ -739,13 +787,13 @@
     alerta.className = "ver";
     document.body.className += " com-alerta";
     if (painel.className) msg.textContent = n.catNome + " · " + n.titulo;
-    Mundo.surpreso(); if (m3d) Mundo3D.surpreso(); humorPassageiro("surpreso", 3000);
+    Mundo.surpreso(); if (m3d) Mundo3D.surpreso(); humorPassageiro("surpreso", 3000); brilho(-1);
     try { if (window.Cadu) Cadu.vibrarPadrao(); } catch (e) {}
     clearTimeout(timerUrg); clearInterval(contagem);
     var seg = 20; $("aseg").textContent = seg;
     contagem = setInterval(function () { seg--; $("aseg").textContent = Math.max(0, seg); if (seg <= 0) fecharAlerta(); }, 1000);
   }
-  function fecharAlerta() { clearInterval(contagem); alerta.className = ""; document.body.className = document.body.className.replace(/ ?com-alerta/g, ""); urgente = null; clearTimeout(timerUrg); }
+  function fecharAlerta() { setTimeout(ajustarBrilho, 50); clearInterval(contagem); alerta.className = ""; document.body.className = document.body.className.replace(/ ?com-alerta/g, ""); urgente = null; clearTimeout(timerUrg); }
   function abrirNoPC(k) {
     if (!k) return; vibrar(30);
     pedir("POST", "/api/abrir", { k: k }, function (er, r) { aviso.textContent = (r && r.msg) || "Falhou."; setTimeout(function () { aviso.textContent = ""; }, 4000); });
