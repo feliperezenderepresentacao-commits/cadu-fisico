@@ -98,6 +98,7 @@ def obter_token():
 
 
 TOKEN = None  # definido no main()
+VISTOS = {}   # IP -> última vez que o celular chegou pelo Wi-Fi (para o log)
 
 
 def ips_locais():
@@ -391,6 +392,9 @@ class Handler(BaseHTTPRequestHandler):
             log("[web] celular: %s" % (q.get("m") or ["?"])[0][:200])
             return self._json({"ok": True})
         if u.path == "/api/ping":  # usado pelo app para achar o PC (não revela nada)
+            if not self._pelo_cabo() and time.time() - VISTOS.get(self.client_address[0], 0) > 60:
+                VISTOS[self.client_address[0]] = time.time()
+                log("[rede] celular chegou pelo Wi-Fi (%s)" % self.client_address[0])
             return self._json({"ok": True, "cadu": 1})
         if u.path in ("/instalar", "/cadu.apk"):   # instalação sem cabo: o navegador do celular baixa o app
             a = achar_apk()
@@ -420,6 +424,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._arquivo(alvo, TIPOS[alvo.suffix], cache=alvo.suffix in (".woff", ".woff2", ".mp3", ".ttf") or alvo.name == "three.min.js" or "/assets/" in u.path)
             return self._json({"erro": "não encontrado"}, 404)
         if not self._autorizado(q):
+            if time.time() - VISTOS.get("x" + self.client_address[0], 0) > 60:
+                VISTOS["x" + self.client_address[0]] = time.time()
+                log("[rede] %s recusado: token errado (ligue o cabo uma vez para parear de novo)" % self.client_address[0])
             return self._json({"erro": "não autorizado"}, 403)
 
         cfg = carregar_config()
