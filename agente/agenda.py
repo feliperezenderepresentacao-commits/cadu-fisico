@@ -159,7 +159,7 @@ class Agenda:
         self.eventos = []          # para a tela do Cadu: [{seq, tipo, texto, quando_txt, disparo}]
         self.seq_ev = 0
         self.falar_no_celular = None  # definido pelo ouvido (voz.py)
-        self.postits = {}
+        self.central = None   # processo da central de post-its
         self.comando = None   # comandos de voz (ex.: "bom dia") — definido pelo agente
 
     def _carregar(self):
@@ -236,9 +236,6 @@ class Agenda:
                 if n["id"] == nid:
                     n["feito"] = True
             self._salvar()
-        p = self.postits.pop(nid, None)
-        if p and p.poll() is None:
-            p.terminate()
 
     def piscar(self, nid):
         """Pede para o post-it do PC piscar e vir para a frente (abre de novo se tinha sido fechado)."""
@@ -268,24 +265,23 @@ class Agenda:
             pend = [n for n in self.notas if not n["feito"]]
         return [dict(n, quando_txt=quando_falado(datetime.fromtimestamp(n["quando"])) if n["quando"] else "") for n in pend]
 
-    # ------------------------------------------------ post-its
-    def abrir_postit(self, n, idx=None):
-        if os.name != "nt" or n["feito"]:
+    # ------------------------------------------------ post-its (central única: bolinha / leque / carta aberta)
+    def abrir_postit(self, n=None, idx=None):
+        """Garante a central de post-its rodando; ela lê o notas.json sozinha (novos, piscar, alarmes)."""
+        if os.name != "nt":
             return
-        if n["id"] in self.postits and self.postits[n["id"]].poll() is None:
+        if self.central is not None and self.central.poll() is None:
             return
         exe = sys.executable.replace("python.exe", "pythonw.exe")
-        pos = idx if idx is not None else len([p for p in self.postits.values() if p.poll() is None])
         try:
-            self.postits[n["id"]] = subprocess.Popen([exe, str(PASTA / "postit.py"), str(n["id"]), str(pos)], creationflags=SEM_JANELA,
-                                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.central = subprocess.Popen([exe, str(PASTA / "central.py")], creationflags=SEM_JANELA,
+                                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            self.log("[agenda] post-it falhou: %s" % e)
+            self.log("[agenda] central de post-its falhou: %s" % e)
 
     def reabrir_postits(self):
-        pend = [n for n in self.notas if not n["feito"] and not (n["quando"] and not n["disparado"] and n["quando"] - time.time() > 86400 * 7)]
-        for i, n in enumerate(pend[-8:]):
-            self.abrir_postit(n, i)
+        if any(not n["feito"] for n in self.notas):
+            self.abrir_postit()
 
     # ------------------------------------------------ relógio dos lembretes
     def rodar(self):
