@@ -43,8 +43,21 @@ class Conversa:
             raise
 
     def _resumo(self):
-        lista = sorted(({"nome": n, **{k: v for k, v in d.items() if k != "sha"}} for n, d in self.sessoes.items()),
-                       key=lambda s: (PRIORIDADE.get(s["estado"], 3), -s.get("quando", 0)))
+        agora = time.time()
+
+        def ordem(s):
+            # esperando você > acabou de terminar (3 min) > executando > o resto; dentro de cada grupo, o mais recente
+            e = s["estado"]
+            if e == "esperando":
+                g = 0
+            elif e == "terminou" and agora - s.get("quando", 0) < 180:
+                g = 1
+            elif e == "executando":
+                g = 2
+            else:
+                g = 3
+            return (g, -s.get("quando", 0))
+        lista = sorted(({"nome": n, **{k: v for k, v in d.items() if k != "sha"}} for n, d in self.sessoes.items()), key=ordem)
         principal = lista[0] if lista else {"estado": "", "titulo": "", "quando": 0, "nome": ""}
         return dict(principal, seq=self.seq, ok=self.ok, erro=getattr(self, "erro", ""), sessoes=lista[:6])
 
