@@ -20,5 +20,6 @@ git add -A sessoes
 git -c user.name="Claude" -c user.email="noreply@anthropic.com" commit -qm "status $NOME: $ESTADO — $TITULO${CADU_STATUS_TRAILER:+
 
 $CADU_STATUS_TRAILER}" || exit 0
-for i in 1 2 3; do git push -q origin status 2>/dev/null && exit 0; git fetch -q --depth 1 origin +status:refs/remotes/origin/status && git rebase -q origin/status || true; done
-echo "não consegui enviar o status" >&2
+for i in 1 2 3; do git push -q origin status 2>/dev/null && { echo "STATUS ENVIADO: $NOME = $ESTADO"; exit 0; }; git fetch -q --depth 1 origin +status:refs/remotes/origin/status && git rebase -q origin/status || true; done
+echo "FALHOU: sem permissão de escrita no repositório cadu-fisico (anexe o repositório com acesso push e tente de novo)" >&2
+exit 1
